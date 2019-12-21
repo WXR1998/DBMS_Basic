@@ -29,6 +29,8 @@ class InsertValueTree;
 class CreateIndexTree;
 class DropIndexTree;
 class TypeTree;
+class SetClauseTree;
+class OperatorTree;
 
 class Tree {
 public:
@@ -90,15 +92,13 @@ private:
 class UpdateTree : public Tree {
 public:
     UpdateTree(std::string relationName,
-               AttributeTree *attribute,
-               ConstValueTree *constValue,
+               SetClauseTree *setClause,
                WhereClauseTree *whereClause);
     virtual ~UpdateTree();
     void visit();
 private:
     std::string relationName;
-    AttributeTree *attribute;
-    ConstValueTree *constValue;
+    SetClauseTree *setClause;
     WhereClauseTree *whereClause;
 };
 
@@ -175,25 +175,32 @@ private:
 
 class CreateIndexTree: public Tree {
 public:
-    CreateIndexTree(const char *relName, AttributeTree *attr);
+    CreateIndexTree(const char *idxName, const char *relName, AttributesTree *attr);
     virtual ~CreateIndexTree();
     void visit();
 
 private:
+    std::string idxName;
     std::string relName;
-    AttributeTree *attribute;
+    AttributesTree *attribute;
 };
 
 
+/*
+    索引也是有名字的，一个索引名对应了一组索引信息
+    删除和加入的时候，都直接对索引名为xx的索引进行操作
+*/
 class DropIndexTree: public Tree {
 public:
-    DropIndexTree(const char *relName, AttributeTree *attr);
+    // DropIndexTree(const char *relName, AttributeTree *attr);
+    DropIndexTree(const char *idxName, const char *relName);
     virtual ~DropIndexTree();
     void visit();
 
 private:
     std::string relName;
-    AttributeTree *attribute;
+    std::string idxName;
+    // AttributeTree *attribute;
 };
 
 class ColumnsTree : public Tree {
@@ -380,6 +387,21 @@ public:
     virtual ~ChecksTree();
     void addCheckTree(CheckTree* tree);
     std::vector<CheckTree*> checks;
+};
+
+class OperatorTree : public Tree {
+public:
+    OperatorTree(CmpOP op);
+    virtual ~OperatorTree();
+    CmpOP op;
+};
+
+class SetClauseTree : public Tree {
+public:
+    SetClauseTree();
+    virtual ~SetClauseTree();
+    void addClause(const char *colName, ConstValueTree *constValue);
+    std::vector<std::pair<std::string, ConstValueTree*> > clauses;
 };
 
 #endif //DATABASE_TREE_H

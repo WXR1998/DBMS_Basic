@@ -12,7 +12,7 @@
 #endif
 #include <cstring>
 
-char *get_text(const char *text) {
+char* get_text(const char *text) {
     int length = strlen(text);
     char *buffer = new char[length + 1];
     memcpy(buffer, text, (length + 1) * sizeof(char));
@@ -25,14 +25,16 @@ void yyerror(const char *);
 
 
 DIGIT           [0-9]
+DATE            ("((((1[6-9]|[2-9][0-9])[0-9]{2})-(0?[13578]|1[02])-(0?[1-9]|[12][0-9]|3[01]))|(((1[6-9]|[2-9][0-9])[0-9]{2})-(0?[13456789]|1[012])-(0?[1-9]|[12][0-9]|30))|(((1[6-9]|[2-9][0-9])[0-9]{2})-0?2-(0?[1-9]|1[0-9]|2[0-8]))|(((1[6-9]|[2-9][0-9])(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))-0?2-29))")
 INTEGER         {DIGIT}+
 FLOAT           {DIGIT}+\.{DIGIT}*
 IDENTIFIER      [a-z][a-z0-9_]*
 WHITESPACE      [ \t\n]
-STRING          (\"[^\"]*\")|(\'[^\']*\')
+STRING          (\'[^\']*\')
 
 %%
 
+{DATE}          { yylval.string = get_text(yytext); /*printf("DATE(%s) ", yylval.string);*/ return DATE; }
 ","             { /*printf(", "); */ return yytext[0]; }
 "("             { /*printf("( "); */ return yytext[0]; }
 ")"             { /*printf(") "); */ return yytext[0]; }
@@ -47,7 +49,7 @@ ALTER           { /*printf("ALTER "); */ return ALTER; }
 ADD             { /*printf("ADD "); */ return ADD; }
 RENAME          { /*printf("RENAME "); */ return RENAME; }
 REFERENCES      { /*printf("REFERENCES "); */ return REFERENCES; }
-DATE            { /*printf("DATE "); */ return DATE; }
+date            { /*printf("date "); */ return KDATE; }
 "FOREIGN KEY"   { /*printf("FOREIGN_KEY "); */ return FOREIGN; }
 CREATE          { /*printf("CREATE "); */ return CREATE; }
 DROP            { /*printf("DROP "); */ return DROP; }
@@ -72,6 +74,8 @@ DESC            { /*printf("DESC "); */ return DESC; }
 INDEX           { /*printf("INDEX "); */ return INDEX; }
 IS              { /*printf("IS "); */ return IS; }
 NULL            { /*printf("NULL "); */ return T_NULL; }
+ON              { /*printf("ON "); */ return ON;}
+TO              { /*printf("TO "); */ return TO;}
 int             { /*printf("int "); */ return KINT; }
 float           { /*printf("float "); */ return KFLOAT; }
 varchar         { /*printf("varchar "); */ return KVARCHAR; }

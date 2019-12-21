@@ -71,28 +71,31 @@ extern int yydebug;
     ADD = 281,
     RENAME = 282,
     REFERENCES = 283,
-    DATE = 284,
-    FOREIGN = 285,
-    KINT = 286,
-    KFLOAT = 287,
-    KVARCHAR = 288,
-    INTEGER = 289,
-    FLOAT = 290,
-    STRING = 291,
-    IDENTIFIER = 292,
-    EQ = 293,
-    GT = 294,
-    LT = 295,
-    GE = 296,
-    LE = 297,
-    NE = 298,
-    NOTNULL = 299,
-    PRIMARY = 300,
-    DESC = 301,
-    INDEX = 302,
-    T_NULL = 303,
-    IS = 304,
-    AND = 305
+    FOREIGN = 284,
+    ON = 285,
+    TO = 286,
+    KINT = 287,
+    KFLOAT = 288,
+    KVARCHAR = 289,
+    KDATE = 290,
+    INTEGER = 291,
+    FLOAT = 292,
+    STRING = 293,
+    IDENTIFIER = 294,
+    DATE = 295,
+    EQ = 296,
+    GT = 297,
+    LT = 298,
+    GE = 299,
+    LE = 300,
+    NE = 301,
+    NOTNULL = 302,
+    PRIMARY = 303,
+    DESC = 304,
+    INDEX = 305,
+    T_NULL = 306,
+    IS = 307,
+    AND = 308
   };
 #endif
 /* Tokens.  */
@@ -122,35 +125,38 @@ extern int yydebug;
 #define ADD 281
 #define RENAME 282
 #define REFERENCES 283
-#define DATE 284
-#define FOREIGN 285
-#define KINT 286
-#define KFLOAT 287
-#define KVARCHAR 288
-#define INTEGER 289
-#define FLOAT 290
-#define STRING 291
-#define IDENTIFIER 292
-#define EQ 293
-#define GT 294
-#define LT 295
-#define GE 296
-#define LE 297
-#define NE 298
-#define NOTNULL 299
-#define PRIMARY 300
-#define DESC 301
-#define INDEX 302
-#define T_NULL 303
-#define IS 304
-#define AND 305
+#define FOREIGN 284
+#define ON 285
+#define TO 286
+#define KINT 287
+#define KFLOAT 288
+#define KVARCHAR 289
+#define KDATE 290
+#define INTEGER 291
+#define FLOAT 292
+#define STRING 293
+#define IDENTIFIER 294
+#define DATE 295
+#define EQ 296
+#define GT 297
+#define LT 298
+#define GE 299
+#define LE 300
+#define NE 301
+#define NOTNULL 302
+#define PRIMARY 303
+#define DESC 304
+#define INDEX 305
+#define T_NULL 306
+#define IS 307
+#define AND 308
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 
 union YYSTYPE
 {
-#line 20 "parser.y" /* yacc.c:1909  */
+#line 21 "parser.y" /* yacc.c:1909  */
 
     int ivalue;
     float fvalue;
@@ -170,8 +176,10 @@ union YYSTYPE
     ColumnTree *columnTree;
     InsertValueTree *insertValueTree;
     TypeTree *typeTree;
+    SetClauseTree *setClauseTree;
+    OperatorTree *operatorTree;
 
-#line 175 "y.tab.hpp" /* yacc.c:1909  */
+#line 183 "y.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

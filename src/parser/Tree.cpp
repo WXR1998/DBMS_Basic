@@ -92,26 +92,26 @@ void InsertTree::visit() {
 
 /* UpdateTree */
 UpdateTree::UpdateTree(string relationName,
-                       AttributeTree *attribute,
-                       ConstValueTree *constValue,
+                       SetClauseTree *setClause,
                        WhereClauseTree *whereClause) {
     this->relationName = relationName;
-    this->attribute = attribute;
-    this->constValue = constValue;
+    this->setClause = setClause;
     this->whereClause = whereClause;
 }
 
 UpdateTree::~UpdateTree() {
-    delete attribute;
-    delete constValue;
+    delete setClause;
     delete whereClause;
 }
 
 void UpdateTree::visit() {
-    AttributeTree::AttributeDescriptor attr = attribute->getDescriptor();
-    AttrValue val = constValue->getDescriptor();
-    vector<ComparisonTree::ComparisonDescriptor> coms = whereClause->getComparision();
-    SystemManager::instance()->Update(relationName, attr, val, coms);
+    // TODO MODIFY
+    // 增添了SetClause的效果，本来只需更改一个，现在需要更改多个
+
+    // AttributeTree::AttributeDescriptor attr = attribute->getDescriptor();
+    // AttrValue val = constValue->getDescriptor();
+    // vector<ComparisonTree::ComparisonDescriptor> coms = whereClause->getComparision();
+    // SystemManager::instance()->Update(relationName, attr, val, coms);
 }
 
 /* DeleteTree */
@@ -162,7 +162,8 @@ void CreateTableTree::visit() {
 
 
 /* CreateIndexTree */
-CreateIndexTree::CreateIndexTree(const char *relName, AttributeTree *attr) {
+CreateIndexTree::CreateIndexTree(const char *idxName, const char *relName, AttributesTree *attr) {
+    this->idxName = string(idxName);
     this->relName = string(relName);
     this->attribute = attr;
 }
@@ -172,23 +173,26 @@ CreateIndexTree::~CreateIndexTree() {
 }
 
 void CreateIndexTree::visit() {
-    auto attr = attribute->getDescriptor();
-    SystemManager::instance()->createIndex(relName, attr);
+    // TODO MODIFY
+    // 从单索引变成了多索引 需要修改
+    // auto attr = attribute->getDescriptor();
+    // SystemManager::instance()->createIndex(relName, attr);
 }
 
 
-DropIndexTree::DropIndexTree(const char *relName, AttributeTree *attr) {
+DropIndexTree::DropIndexTree(const char *idxName, const char *relName){
     this->relName = string(relName);
-    this->attribute = attr;
+    this->idxName = string(idxName);
 }
 
 DropIndexTree::~DropIndexTree() {
-    delete attribute;
 }
 
 void DropIndexTree::visit() {
-    auto attr = attribute->getDescriptor();
-    SystemManager::instance()->dropIndex(relName, attr);
+    // auto attr = attribute->getDescriptor();
+    // SystemManager::instance()->dropIndex(relName, attr);
+    // TODO MODIFY
+    // 修改为：删除某个索引名对应的索引信息
 }
 
 
@@ -620,3 +624,12 @@ InsertValueTree::~InsertValueTree() {
 void InsertValueTree::addConstValues(ConstValuesTree *constValuesTree) {
     values.push_back(constValuesTree);
 }
+
+OperatorTree::OperatorTree(CmpOP op):op(op){ }
+OperatorTree::~OperatorTree(){}
+
+SetClauseTree::SetClauseTree(){}
+void SetClauseTree::addClause(const char *colName, ConstValueTree *constValue){
+    clauses.push_back(make_pair(std::string(colName), constValue));
+}
+SetClauseTree::~SetClauseTree(){}

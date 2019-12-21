@@ -22,7 +22,7 @@ enum CmpOP {
 };
 
 enum AttrType {
-    T_INT, T_FLOAT, T_STRING
+    T_INT, T_FLOAT, T_STRING, T_DATE
 };
 
 
@@ -54,37 +54,6 @@ static bool compareIn(const T &a, const std::vector<T>& b) {
     }
     return false;
 }
-
-class CompareLike {
-public:
-    static bool compareLike(std::string s, std::string pattern) {
-        std::string p(pattern);
-        if(std::regex_match(s, std::regex(p))) {
-            return true;
-        }
-        else if(p.size() >= 1 ) {
-            size_t pos = 0;
-            while((pos = p.find(std::string("%"), pos)) != std::string::npos) {
-                p.replace(pos, 1, std::string("(.+)"));
-                pos += 4;
-            }
-            pos = 0;
-            while((pos = p.find(std::string("?"), pos)) != std::string::npos) {
-                p.replace(pos, 1, std::string("(.?)"));
-                pos += 4;
-            }
-            pos = 0;
-            while((pos = p.find(std::string("*"), pos)) != std::string::npos) {
-                p.replace(pos, 1, std::string("(.*)"));
-                pos += 4;
-            }
-            if(std::regex_match(s, std::regex(p))) {
-                return true;
-            }
-        }
-        return false;
-    }
-};
 
 struct AttrValue {
     AttrType type;
