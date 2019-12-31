@@ -10,11 +10,17 @@ class SingleIndexHandler {
 public:
     SingleIndexHandler();
     ~SingleIndexHandler();
+    // 插入一条record，键值为pData，RId为rid
     RETVAL InsertEntry(char *pData, const RecordID &rid);
+    // 删除一条record，键值为pData，RId为rid
     RETVAL DeleteEntry(char *pData, const RecordID &rid);
+    // 寻找一条record，键值为pData 结果存入rid
     RETVAL SearchEntry(char *pData, RecordID &rid);
+    // 无功能
     RETVAL ForcePages();
+    // 检查整棵树是否合法
     RETVAL CheckTree();
+    // 给定一条record，找出满足 X op record 条件的所有index
     std::vector<RecordID> ScanIndex(char *pData, CmpOP op);
 
 private:

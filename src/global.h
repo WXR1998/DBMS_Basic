@@ -14,6 +14,7 @@
 #define MAX_PAGE_NUMBER 4096
 #define PAGE_HEADER_SIZE 48
 #define MAX_NAME 42
+#define MAX_DEF  20
 #define MAX_RECORD_SIZE 4096
 #define MAX_CHECK_SIZE 10
 
@@ -86,15 +87,31 @@ struct DataAttrInfo {
     AttrType attrType;              // Attr的类型
     int attrLength;                 // Attr占用字节长度
     int indexNo;                    // Attr在Relation中的编号
-    int isPrimaryKey;               // 是否为主键
+    int isPrimaryKey;               // 是否为主键，如果不为0表示在主键中的编号
     int notNull;                    // 是否为非空
+    int isDefault;                  // 是否有默认值
+    char defaultVal[MAX_DEF + 1];   // 如果有默认值，则默认值为defaultVal字节转化成对应类型之后的值
 };
 
 struct DataRelInfo {
-    char relName[MAX_NAME + 1];
-    int recordSize;
-    int attrCount;
-    int indexCount;
+    char relName[MAX_NAME + 1];     // 表名
+    int recordSize;                 // 一条Record的长度
+    int attrCount;                  // 有几列
+    int indexCount;                 // 有几行
+    int primaryCount;               // 主键含有几个attr
+};
+
+struct DataFkInfo {
+    char fkName[MAX_NAME + 1];      // 外键名
+    char serRelName[MAX_NAME + 1];  // 从表名
+    char masRelName[MAX_NAME + 1];  // 主表名
+    int attrCount;                  // 外键由几个attr组成
+    char serAttr1Name[MAX_NAME + 1];// 从表attr1
+    char serAttr2Name[MAX_NAME + 1];// 从表attr2
+    char serAttr3Name[MAX_NAME + 1];// 从表attr3
+    char masAttr1Name[MAX_NAME + 1];// 主表attr1
+    char masAttr2Name[MAX_NAME + 1];// 主表attr2
+    char masAttr3Name[MAX_NAME + 1];// 主表attr3
 };
 
 typedef int RETVAL;
@@ -108,6 +125,8 @@ typedef int RETVAL;
 // Exit immediately if error occurs
 #define RETURNIF(rc) do { RETVAL _x_ = (rc); if ((_x_) != RETVAL_OK) { PrintError(__LINE__, __FILE__, __func__); return _x_; }} while(0)
 
+#define MSGIF(rc, msg) do { RETVAL _x_ = (rc); if ((_x_) != RETVAL_OK) { printf("%s\n", msg); return _x_; }} while(0)
+
 
 inline void PrintError(int line, const char* file, const char* func) {
     printf("Error occured, in line %d of file \"%s\", in function<%s>\n",
@@ -119,6 +138,7 @@ inline void PrintError(int line, const char* file, const char* func) {
 #define kDefaultDBPosition "./"
 #define kDefaultRelCatName "relcat"
 #define kDefaultAttrCatName "attrcat"
+#define kDefaultFkCatName "fkcat"
 #define kDefaultCheckCatName "checkcat"
 
 template < typename T > std::string to_string( const T& n )

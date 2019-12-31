@@ -7,10 +7,10 @@ void Printer::printHeader(std::vector<AttributeTree::AttributeDescriptor> attrs,
     for(int i = 0; i < attrs.size(); ++i)
     {
         if(attrs[i].relName.empty()) {
-            c << attrs[i].attrName << "\t\t";
+            c << attrs[i].attrName << " | ";
         }
         else {
-            c << attrs[i].relName << "." << attrs[i].attrName << "\t\t";
+            c << attrs[i].relName << "." << attrs[i].attrName << " | ";
         }
     }
     c << endl;
@@ -30,23 +30,29 @@ void Printer::printAll(vector<RecordDescriptor> recordDescriptors, ostream& c) {
         return;
     // First Print Header
     for(int i = 0; i < recordDescriptors[0].attrNames.size(); ++i)
-        c << recordDescriptors[0].attrNames[i] << "\t\t";
+        c << recordDescriptors[0].attrNames[i] << " | ";
+    c << endl;
+    for (int i = 0; i < 80; ++i)
+        c << "=";
     c << endl;
     for(const auto& recordDescriptor : recordDescriptors) {
         for(int i = 0; i < recordDescriptor.attrVals.size(); ++i) {
             const auto& val = recordDescriptor.attrVals[i];
             if(val.isNull)
-                c << "NULL" << "\t\t";
+                c << "NULL" << " | ";
             else {
                 switch(val.type) {
                     case T_INT :
-                        c << val.i << "\t\t";
+                        c << val.i << " | ";
                         break;
                     case T_FLOAT :
-                        c << val.f << "\t\t";
+                        c << val.f << " | ";
                         break;
                     case T_STRING :
-                        c << val.s << "\t\t";
+                        c << val.s << " | ";
+                        break;
+                    case T_DATE :
+                        c << val.s << " | ";
                         break;
                 }
             }
@@ -60,17 +66,20 @@ void Printer::printBody(std::vector<RecordDescriptor> recordDescriptors, ostream
         for(int i = 0; i < recordDescriptor.attrVals.size(); ++i) {
             const auto& val = recordDescriptor.attrVals[i];
             if(val.isNull)
-                c << "NULL" << "\t\t";
+                c << "NULL" << " | ";
             else {
                 switch(val.type) {
                     case T_INT :
-                        c << val.i << "\t\t";
+                        c << val.i << " | ";
                         break;
                     case T_FLOAT :
-                        c << val.f << "\t\t";
+                        c << val.f << " | ";
                         break;
                     case T_STRING :
-                        c << val.s << "\t\t";
+                        c << val.s << " | ";
+                        break;
+                    case T_DATE :
+                        c << val.s << " | ";
                         break;
                 }
             }
@@ -83,17 +92,20 @@ void Printer::printBody(RecordDescriptor recordDescriptor, ostream &c) {
     for(int i = 0; i < recordDescriptor.attrVals.size(); ++i) {
         const auto& val = recordDescriptor.attrVals[i];
         if(val.isNull)
-            c << "NULL" << "\t\t";
+            c << "NULL" << " | ";
         else {
             switch(val.type) {
                 case T_INT :
-                    c << val.i << "\t\t";
+                    c << val.i << " | ";
                     break;
                 case T_FLOAT :
-                    c << val.f << "\t\t";
+                    c << val.f << " | ";
                     break;
                 case T_STRING :
-                    c << val.s << "\t\t";
+                    c << val.s << " | ";
+                    break;
+                case T_DATE :
+                    c << val.s << " | ";
                     break;
             }
         }
@@ -103,23 +115,26 @@ void Printer::printBody(RecordDescriptor recordDescriptor, ostream &c) {
 
 void Printer::printBody(std::vector<double> vals, ostream &c) {
     for(int i = 0; i < vals.size(); ++i)
-        c << vals[i] << "\t\t";
+        c << vals[i] << " | ";
     c << endl;
 }
 
 void Printer::printBody(AttrValue val, std::vector<double> vals, ostream &c) {
     switch(val.type) {
         case T_INT :
-            c << val.i << "\t\t";
+            c << val.i << " | ";
             break;
         case T_FLOAT :
-            c << val.f << "\t\t";
+            c << val.f << " | ";
             break;
         case T_STRING :
-            c << val.s << "\t\t";
+            c << val.s << " | ";
+            break;
+        case T_DATE :
+            c << val.s << " | ";
             break;
     }
     for(int i = 0; i < vals.size(); ++i)
-        c << vals[i] << "\t\t";
+        c << vals[i] << " | ";
     c << endl;
 }

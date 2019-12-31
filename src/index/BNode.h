@@ -15,7 +15,9 @@ public:
     RecordID parent;
 
     BNode();
+    // 将节点从字符串中load出来
     BNode(char *pData, AttrType attrType, int AttrLength);
+    // 将节点dump到字符串里，以便保存到record中
     std::string toString(AttrType attrType, int attrLength) const;
     int size() const;
     int rank(const RecordID &rid) const;

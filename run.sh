@@ -5,6 +5,7 @@ if [ $# -gt 0 ]; then
         cd src/parser
         make
         cd ../..
+        mkdir build
         cd build
         cmake ..
         make

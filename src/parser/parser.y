@@ -102,12 +102,15 @@ stmt:
         { }
     | alterStmt ';'
         { }
+    | ';'
+        { }
     ;
     
 sysStmt:
     SHOW DATABASES
         {
             // TODO
+            printf("TODO\n");
         }
     ;
 
@@ -218,10 +221,12 @@ idxStmt:
     | ALTER TABLE tbName ADD INDEX idxName '(' columnList ')'
         {
             // TODO
+            printf("TODO\n");
         }
     | ALTER TABLE tbName DROP INDEX idxName
         {
             // TODO
+            printf("TODO\n");
         }
     ;
     
@@ -229,51 +234,61 @@ alterStmt:
     ALTER TABLE tbName ADD field
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName DROP colName
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName CHANGE colName field
         {
             // TODO
 
+            printf("TODO\n");
         }
     | ALTER TABLE tbName RENAME TO tbName
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName ADD PRIMARY '(' columnList ')'
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName DROP PRIMARY
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName ADD CONSTRAINT pkName PRIMARY '(' columnList ')'
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName DROP PRIMARY pkName
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName ADD CONSTRAINT fkName FOREIGN '(' columnList ')' REFERENCES tbName '(' columnList ')'
         {
             // TODO
+            printf("TODO\n");
 
         }
     | ALTER TABLE tbName DROP FOREIGN fkName
         {
             // TODO
+            printf("TODO\n");
 
         }
     ;
@@ -318,10 +333,12 @@ field:
     | PRIMARY '(' columnList ')'
         {
             // TODO
+            printf("TODO\n");
         }
     | FOREIGN '(' colName ')' REFERENCES tbName '(' colName ')'
         {
             // TODO
+            printf("TODO\n");
         }
     ;
 

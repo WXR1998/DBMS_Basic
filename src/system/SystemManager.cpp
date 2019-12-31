@@ -50,6 +50,21 @@ RETVAL SystemManager::createDB(const char *dbName) {
 #endif
 
     // Then create two catalogs
+    // 这两个表记录了当前database中各个table的的相关信息
+    /*
+
+    - RelCat:
+        table名, table一条记录的长度, table的attr数量, table有多少条index   |   table是否有主键
+
+    - AttrCat:
+        table名, attr名, attr在记录中的偏移, attr类型, attr长度, attr排序编号, 在主键中的排序编号, 是否非空   |   attr是否存在默认值, 默认值
+
+    - FkCat:
+        fk名, 从table, 主table, attr数, 从attr1, 从attr2，从attr3, 主attr1, 主attr2, 主attr3
+
+    */
+
+
     // RelCat
     RETURNIF(recordManager->createFile(kDefaultRelCatName, sizeof(DataRelInfo)));
     SingleFileHandler* fileHandle = recordManager->openFile(kDefaultRelCatName);
@@ -57,7 +72,8 @@ RETVAL SystemManager::createDB(const char *dbName) {
     memset(&dataRelInfo, 0, sizeof(DataRelInfo));
     dataRelInfo.recordSize = sizeof(DataRelInfo);
     dataRelInfo.indexCount = 0;
-    dataRelInfo.attrCount = 4;
+    dataRelInfo.attrCount = 5;
+    dataRelInfo.primaryCount = 0;
     strcpy(dataRelInfo.relName, kDefaultRelCatName);
     RecordID recordID;
     RETURNIF(fileHandle->insertRecord((const char*)&dataRelInfo, recordID));
@@ -65,9 +81,22 @@ RETVAL SystemManager::createDB(const char *dbName) {
     memset(&dataRelInfo, 0, sizeof(DataRelInfo));
     dataRelInfo.recordSize = sizeof(DataAttrInfo);
     dataRelInfo.indexCount = 0;
-    dataRelInfo.attrCount = 8;
+    dataRelInfo.attrCount = 10;
+    dataRelInfo.primaryCount = 0;
     strcpy(dataRelInfo.relName, kDefaultAttrCatName);
     RETURNIF(fileHandle->insertRecord((const char*)&dataRelInfo, recordID));
+
+    memset(&dataRelInfo, 0, sizeof(DataRelInfo));
+    dataRelInfo.recordSize = sizeof(DataFkInfo);
+    dataRelInfo.indexCount = 0;
+    dataRelInfo.attrCount = 10;
+    dataRelInfo.primaryCount = 0;
+    strcpy(dataRelInfo.relName, kDefaultFkCatName);
+    RETURNIF(fileHandle->insertRecord((const char*)&dataRelInfo, recordID));
+
+    // FkCat
+    RETURNIF(recordManager->createFile(kDefaultFkCatName, sizeof(DataFkInfo)));
+    fileHandle = recordManager->openFile(kDefaultFkCatName);
 
     // AttrCat
     // attr in relCat
@@ -117,6 +146,18 @@ RETVAL SystemManager::createDB(const char *dbName) {
     strcpy(dataAttrInfo.relName, kDefaultRelCatName);
     strcpy(dataAttrInfo.attrName, "indexCount");
     dataAttrInfo.offset = offsetof(DataRelInfo, indexCount);
+    dataAttrInfo.attrLength = sizeof(int);
+    dataAttrInfo.attrType = AttrType::T_INT;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultRelCatName);
+    strcpy(dataAttrInfo.attrName, "primaryCount");
+    dataAttrInfo.offset = offsetof(DataRelInfo, primaryCount);
     dataAttrInfo.attrLength = sizeof(int);
     dataAttrInfo.attrType = AttrType::T_INT;
     dataAttrInfo.indexNo = 0;
@@ -221,6 +262,151 @@ RETVAL SystemManager::createDB(const char *dbName) {
     dataAttrInfo.notNull = 0;
     RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
 
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultAttrCatName);
+    strcpy(dataAttrInfo.attrName, "isDefault");
+    dataAttrInfo.offset = offsetof(DataAttrInfo, isDefault);
+    dataAttrInfo.attrLength = sizeof(int);
+    dataAttrInfo.attrType = AttrType::T_INT;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultAttrCatName);
+    strcpy(dataAttrInfo.attrName, "defaultVal");
+    dataAttrInfo.offset = offsetof(DataAttrInfo, defaultVal);
+    dataAttrInfo.attrLength = MAX_DEF + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    // attr in FkCat
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "fkName");
+    dataAttrInfo.offset = offsetof(DataFkInfo, fkName);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "serRelName");
+    dataAttrInfo.offset = offsetof(DataFkInfo, serRelName);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "masRelName");
+    dataAttrInfo.offset = offsetof(DataFkInfo, masRelName);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "attrCount");
+    dataAttrInfo.offset = offsetof(DataFkInfo, attrCount);
+    dataAttrInfo.attrLength = sizeof(int);
+    dataAttrInfo.attrType = AttrType::T_INT;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "serAttr1Name");
+    dataAttrInfo.offset = offsetof(DataFkInfo, serAttr1Name);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "serAttr2Name");
+    dataAttrInfo.offset = offsetof(DataFkInfo, serAttr2Name);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "serAttr3Name");
+    dataAttrInfo.offset = offsetof(DataFkInfo, serAttr3Name);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "masAttr1Name");
+    dataAttrInfo.offset = offsetof(DataFkInfo, masAttr1Name);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "masAttr2Name");
+    dataAttrInfo.offset = offsetof(DataFkInfo, masAttr2Name);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultFkCatName);
+    strcpy(dataAttrInfo.attrName, "masAttr3Name");
+    dataAttrInfo.offset = offsetof(DataFkInfo, masAttr3Name);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
 #ifdef __MINGW32__
     RETURNIF(chdir(kDefaultDBPosition));
 #else
@@ -232,10 +418,7 @@ RETVAL SystemManager::createDB(const char *dbName) {
 
 RETVAL SystemManager::dropDB(const char *dbName) {
     if(hasOpenDB && strcmp(currentDBName, dbName) == 0)
-    {
         RETURNIF(recordManager->closeFile());
-
-    }
 
 #ifdef __MINGW32__
     char cmd[256] = "rmdir /s /q ";
@@ -250,6 +433,7 @@ RETVAL SystemManager::dropDB(const char *dbName) {
     }
     strcat(cmd, dbName);
     system(cmd);
+    printf("[INFO] Drop database %s success.\n", dbName);
 #endif
     return 0;
 }
@@ -257,8 +441,8 @@ RETVAL SystemManager::dropDB(const char *dbName) {
 RETVAL SystemManager::openDB(const char *dbName) {
     if(hasOpenDB)
         closeDB();
-    RETURNIF(chdir(dbName));
-    printf("Success\n");
+    MSGIF(chdir(dbName), "[ERROR] Database does not exist.");
+    printf("[INFO] Open database %s success.\n", dbName);
     hasOpenDB = true;
     strcpy(currentDBName, dbName);
     RETURNIF(dbHandle.refreshHandle());
@@ -485,6 +669,12 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
 }
 
 
+/*
+    SELECT <selector> FROM <tablelist> (WHERE <whereClause>)
+    selector:   attrs
+    tablelist:  rels
+    whereClause:    coms
+*/
 vector<RecordDescriptor> SystemManager::select(std::vector<AttributeTree::AttributeDescriptor> attrs,
                          std::vector<std::string> rels,
                          std::vector<ComparisonTree::ComparisonDescriptor> coms, RETVAL& rc) {
@@ -1081,6 +1271,13 @@ RETVAL SystemManager::qUpdate(const std::string& relName, const RecordID &record
     return 0;
 }
 
+/*
+    根据表名、约束名获得查找表项
+    coms: 如 tablea.attr1 op constant
+    首先找到其中的一列，这一列是和常量的比较，所以可以通过索引进行初筛
+    如果没有这种列，就先把所有的行都取出
+    接着进行暴力筛选
+*/
 vector<RecordDescriptor> SystemManager::retrieveRecordsByIndex(string relName,
                                                                const vector<SystemManager::Comparison> &coms,
                                                                RETVAL &rc) {
@@ -1112,6 +1309,7 @@ vector<RecordDescriptor> SystemManager::retrieveRecordsByIndex(string relName,
                 case T_INT: data = (char*)&(v.i); break;
                 case T_FLOAT: data = (char*)&(v.f); break;
                 case T_STRING: data = (char*)(v.s.c_str()); break;
+                case T_DATE: data = (char*)(v.s.c_str()); break;
             }
 
 
