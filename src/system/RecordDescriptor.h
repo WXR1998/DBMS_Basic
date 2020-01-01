@@ -17,8 +17,14 @@ public:
 
     RecordDescriptor();
 
-    // Used by Insert Command
+    /*
+        Used by Insert Command
+        给定一个表名和一系列列名，返回一个Record的读取器
+        在这里不对主键完整性进行检查，需要在Insert函数内手动检查
+    */
     static RecordDescriptor createRecordDescriptor(const std::string &relName, std::vector<AttrValue> vals, RETVAL& rc);
+    static RecordDescriptor createRecordDescriptor(const std::string &relName, std::vector<std::string> &attrs, std::vector<AttrValue> vals, RETVAL& rc);
+
 
     // Used by Select Command
     RecordDescriptor filteredByAttributeName(std::vector<AttributeTree::AttributeDescriptor> attrs) const;

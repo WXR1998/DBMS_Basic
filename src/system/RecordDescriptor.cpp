@@ -47,7 +47,7 @@ RETVAL RecordDescriptor::toRecord(const RecordID rid, Record& record) {
     int nullVectorBase = dataAttrInfo[attrCount-1].offset + dataAttrInfo[attrCount-1].attrLength;
     recordSize = nullVectorBase + attrCount;
     if(attrNames.size() != attrCount) {
-        cerr << "InValid RecordDescriptor!" << endl;
+        cerr << "[ERROR] InValid RecordDescriptor!" << endl;
         return RETVAL_ERR;
     }
     char* buffer = new char[recordSize];
@@ -101,7 +101,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
     DataAttrInfo* dataAttrInfo = nullptr;
     SystemManager::instance()->fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo);
     if(attrCount != vals.size()) {
-        cerr << "Invalid Input!" << endl;
+        cerr << "[ERROR] Relation <" << relName << "> has " << attrCount << " attributes, but you only provided " << vals.size() << "." << endl;
         rc = RETVAL_ERR;
         return recordDescriptor;
     }
@@ -112,7 +112,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
         if(vals[i].isNull) {
             if(dataAttrInfo[i].notNull) {
                 // Check NULL
-                cerr << "Insert NULL into NOT NULL Attribute!" << endl;
+                cerr << "[ERROR] Insert NULL into NOT NULL Attribute!" << endl;
                 rc = RETVAL_ERR;
                 return recordDescriptor;
             }
@@ -135,38 +135,140 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
             recordDescriptor.attrVals.push_back(vals[i]);
         }
         else {
-            cerr << "Input Type InValid" << endl;
+            cerr << "[ERROR] Input Type InValid" << endl;
             rc = RETVAL_ERR;
             return recordDescriptor;
         }
     }
     // Check Primary Key
-    if(hasPrimaryKey) {
-        void* data;
-        if(primaryValue.type == T_INT)
-            data = (void*)&(primaryValue.i);
-        else if(primaryValue.type == T_FLOAT)
-            data = (void*)&(primaryValue.f);
-        else
-            data = (void*)(primaryValue.s.c_str());
-        SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
-        FileScan fileScan;
-        fileScan.openScan(*fileHandle,
-                          primaryAttrInfo.attrType,
-                          primaryAttrInfo.attrLength,
-                          primaryAttrInfo.offset,
-                          CmpOP::T_EQ, data);
-        Record record;
-        rc = fileScan.getNextRec(record);
-        if(rc != RETVAL_EOF) {
-            cerr << "Primary Key Duplicate!" << endl;
-            rc = RETVAL_ERR;
-        }
-        else
-            rc = RETVAL_OK;
+    // if(hasPrimaryKey) {
+    //     void* data;
+    //     if(primaryValue.type == T_INT)
+    //         data = (void*)&(primaryValue.i);
+    //     else if(primaryValue.type == T_FLOAT)
+    //         data = (void*)&(primaryValue.f);
+    //     else
+    //         data = (void*)(primaryValue.s.c_str());
+    //     SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
+    //     FileScan fileScan;
+    //     fileScan.openScan(*fileHandle,
+    //                       primaryAttrInfo.attrType,
+    //                       primaryAttrInfo.attrLength,
+    //                       primaryAttrInfo.offset,
+    //                       CmpOP::T_EQ, data);
+    //     Record record;
+    //     rc = fileScan.getNextRec(record);
+    //     if(rc != RETVAL_EOF) {
+    //         cerr << "[ERROR] Primary Key Duplicate!" << endl;
+    //         rc = RETVAL_ERR;
+    //     }
+    //     else
+    //         rc = RETVAL_OK;
+    // }
+    // else
+    //     rc = RETVAL_OK;
+    rc = RETVAL_OK;
+    delete[] dataAttrInfo;
+    return recordDescriptor;
+}
+
+RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &relName,
+                                                          vector<std::string> &attrs,
+                                                          vector<AttrValue> vals, RETVAL &rc) {
+    RecordDescriptor recordDescriptor;
+    if (attrs.size() != vals.size()){
+        cerr << "[ERROR] The length of insert attrs should equal to the length of insert vals." << endl;
+        rc = RETVAL_ERR;
+        return recordDescriptor;
     }
-    else
-        rc = RETVAL_OK;
+    recordDescriptor.relName = relName;
+    int attrCount = 0;
+    DataAttrInfo* dataAttrInfo = nullptr;
+    SystemManager::instance()->fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo);
+
+    int givenAttrCount = attrs.size();
+
+    // 先确保attrs里的列都在原表中出现过
+    for (int j = 0; j < givenAttrCount; ++j){
+        int idx = -1;
+        for (int i = 0; i < attrCount; ++i)
+            if (strcmp(dataAttrInfo[i].attrName, attrs[j].c_str()) == 0){
+                idx = j;
+                break;
+            }
+        if (idx == -1){
+            rc = RETVAL_ERR;
+            cerr << "[ERROR] Attribute <" << attrs[j] << "> not found in relation." << endl;
+            return recordDescriptor;
+        }
+    }
+
+    for(int i = 0; i < attrCount; ++i) {    // i是原表的列下标
+        int idx = -1;
+        for (int j = 0; j < givenAttrCount; ++j)    // j是给定attr的下标
+            if (strcmp(dataAttrInfo[i].attrName, attrs[j].c_str()) == 0){
+                idx = j;
+                break;
+            }
+        if (idx == -1){ // 这说明原表的列在attrs里没找到
+            if (!dataAttrInfo[i].isDefault){    // 首先查看default
+                rc = RETVAL_ERR;
+                cerr << "[ERROR] Attribute <" << dataAttrInfo[i].attrName << "> has no default value, but you leave it blank." << endl;
+                return recordDescriptor;
+            }else{  // 从default中提取
+                AttrValue val;
+                val.type = dataAttrInfo[i].attrType;
+                unsigned int magic = *((unsigned int*)dataAttrInfo[i].defaultVal);
+                if (magic == NULL_MAGIC_NUMBER)
+                    val.isNull = true;
+                else{
+                    switch (val.type) {
+                        case T_INT:
+                            val.i = *((int*)dataAttrInfo[i].defaultVal);
+                            break;
+                        case T_FLOAT:
+                            val.f = *((float*)dataAttrInfo[i].defaultVal);
+                            break;
+                        case T_STRING:
+                            val.s = std::string(dataAttrInfo[i].defaultVal);
+                            break;
+                        case T_DATE:
+                            val.s = std::string(dataAttrInfo[i].defaultVal);
+                            break;
+                    }
+                    val.isNull = false;
+                }
+
+                recordDescriptor.attrNames.push_back(dataAttrInfo[i].attrName);
+                recordDescriptor.attrVals.push_back(val);
+            }
+        }else{  // 找到了，采用对应列的值
+            if(vals[idx].isNull) {
+                if(dataAttrInfo[i].notNull) {
+                    // Check NULL
+                    cerr << "[ERROR] Insert NULL into NOT NULL Attribute!" << endl;
+                    rc = RETVAL_ERR;
+                    return recordDescriptor;
+                }
+                else {
+                    recordDescriptor.attrNames.push_back(dataAttrInfo[i].attrName);
+                    vals[idx].type = dataAttrInfo[i].attrType;
+                    recordDescriptor.attrVals.push_back(vals[idx]);
+                }
+            }
+            else if((dataAttrInfo[i].attrType == vals[idx].type)
+            || (dataAttrInfo[i].attrType == T_FLOAT && vals[idx].type == T_INT)) {
+                recordDescriptor.attrNames.push_back(dataAttrInfo[i].attrName);
+                recordDescriptor.attrVals.push_back(vals[idx]);
+            }
+            else {
+                cerr << "[ERROR] Input Type InValid" << endl;
+                rc = RETVAL_ERR;
+                return recordDescriptor;
+            }
+        }
+    }
+    rc = RETVAL_OK;
     delete[] dataAttrInfo;
     return recordDescriptor;
 }

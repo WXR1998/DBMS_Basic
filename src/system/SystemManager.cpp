@@ -280,7 +280,7 @@ RETVAL SystemManager::createDB(const char *dbName) {
     strcpy(dataAttrInfo.attrName, "defaultVal");
     dataAttrInfo.offset = offsetof(DataAttrInfo, defaultVal);
     dataAttrInfo.attrLength = MAX_DEF + 1;
-    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.attrType = AttrType::T_NONE;
     dataAttrInfo.indexNo = 0;
     dataAttrInfo.isPrimaryKey = 0;
     dataAttrInfo.notNull = 0;
@@ -464,7 +464,7 @@ RETVAL SystemManager::closeDB() {
 RETVAL SystemManager::createTable(const char *relName, int attrCount, AttrInfo *attributes) {
     if(!hasOpenDB)
     {
-        cerr << " Please Open DB first!" << endl;
+        cerr << "[ERROR] Please Open DB first!" << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.createTable(relName, attrCount, attributes));
@@ -610,7 +610,7 @@ RETVAL SystemManager::load(const char *relName, const char *fileName) {
 
 RETVAL SystemManager::help() {
     if(!hasOpenDB) {
-        cerr << "Please Open DB first" << endl;
+        cerr << "[ERROR] Please Open DB first" << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.help());
@@ -624,7 +624,7 @@ std::vector<std::vector<string>> SystemManager::qHelp()
 
 RETVAL SystemManager::help(const char *relName) {
     if(!hasOpenDB) {
-        cerr << "Please Open DB first" << endl;
+        cerr << "[ERROR] Please Open DB first" << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.help(relName));
@@ -769,14 +769,23 @@ void SystemManager::iterateCrossProduct(vector<vector<RecordDescriptor>> &record
     }
 }
 
-RETVAL SystemManager::Insert(std::string relName, std::vector<AttrValue> vals) {
+/*
+    向relName里插入一条Record，它的值列表为vals
+    如果attrs == NULL，说明是直接插入全部数值
+    否则只插入限定的attrs，其他的做非空判断，填入默认值
+*/
+RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attrs, std::vector<AttrValue> vals) {
     if (!hasRelation(relName.c_str())) {
-        printf("No such relation\n");
+        cerr << "[ERROR] No such relation." << endl;
         return RETVAL_ERR;
     }
-
     RETVAL rc;
-    RecordDescriptor descriptor = RecordDescriptor::createRecordDescriptor(relName, vals, rc);
+    RecordDescriptor descriptor;
+    if (attrs == NULL)
+        descriptor = RecordDescriptor::createRecordDescriptor(relName, vals, rc);
+    else
+        descriptor = RecordDescriptor::createRecordDescriptor(relName, *attrs, vals, rc);
+    
     if(rc != RETVAL_OK) {
         return rc;
     }
@@ -804,6 +813,7 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<AttrValue> vals) {
                 case T_INT: data = (char*)&(v.i); break;
                 case T_FLOAT: data = (char*)&(v.f); break;
                 case T_STRING: data = (char*)(v.s.c_str()); break;
+                case T_DATE: data = (char*)(v.s.c_str()); break;
             }
             SingleIndexHandler indexHandle;
             RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(), dataAttrInfo[i].indexNo, indexHandle));
@@ -812,7 +822,7 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<AttrValue> vals) {
     }
 
     delete []dataAttrInfo;
-    return 0;
+    return RETVAL_OK;
 }
 
 RETVAL SystemManager::Update(std::string relName,

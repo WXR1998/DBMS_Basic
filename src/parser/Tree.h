@@ -31,6 +31,7 @@ class DropIndexTree;
 class TypeTree;
 class SetClauseTree;
 class OperatorTree;
+class PrimarySetTree;
 
 class Tree {
 public:
@@ -48,7 +49,9 @@ public:
         if (tree != nullptr)
             tree->visit();
     }
+    Tree(){ error = false; }
     static Tree *tree;
+    bool error; // 如果error为真，表示该句存在问题，不应执行
 };
 
 class TypeTree : public Tree {
@@ -81,11 +84,13 @@ private:
 class InsertTree : public Tree {
 public:
     InsertTree(const char *relationName, InsertValueTree* insertValueTree);
+    InsertTree(const char *relationName, AttributesTree *attrs, InsertValueTree* insertValueTree);
     virtual ~InsertTree();
     void visit();
 private:
     std::string relationName;
     InsertValueTree* insertValueTree;
+    AttributesTree* attrs;
 };
 
 
@@ -216,6 +221,7 @@ public:
 private:
     std::vector<ColumnTree *> columns;
     AttrInfo *attrInfos;
+    int primaryCount;       // 主键有几个attr
 };
 
 
@@ -223,11 +229,13 @@ class ColumnTree : public Tree {
 public:
     ColumnTree(const char *columnName, AttrType type, int size = 4,
                int notNull = 0, ConstValueTree *defaultValue = NULL);
+    ColumnTree();
     virtual ~ColumnTree();
 
     AttrInfo getAttrInfo();
     void setNotNull(int notNull);
     friend class ColumnsTree;
+    bool isPrimarySetTree;
 private:
     std::string columnName;
     AttrType type;
@@ -236,6 +244,13 @@ private:
     int notNull;
     int isDefault;
     AttrValue constDescriptor;
+};
+
+class PrimarySetTree : public ColumnTree {
+public:
+    PrimarySetTree(AttributesTree *attrs);
+    virtual ~PrimarySetTree();
+    AttributesTree *attrs;
 };
 
 

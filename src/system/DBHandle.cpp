@@ -58,6 +58,13 @@ RETVAL DBHandle::refreshHandle() {
     return RETVAL_OK;
 }
 
+/*
+    创建一个数据表table，其参数如下：
+    relName:    表名
+    attrCount:  列数
+    attributes: 列信息
+    其中，列信息是AttrInfo类型
+*/
 RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attributes) {
     FileHandler* recordManager = FileHandler::instance();
     // First Updata System Table
@@ -66,8 +73,10 @@ RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attri
     DataAttrInfo dataAttrInfo;
     ::set<string> attrs;
     RecordID recordID;
-    for(int i = 0; i < attrCount; ++i)
-    {
+    /*
+        这个循环用于把所有attr的信息转化为record格式，便于保存
+    */
+    for(int i = 0; i < attrCount; ++i) {
         const AttrInfo& attrInfo = attributes[i];
         memset(&dataAttrInfo, 0, sizeof(DataAttrInfo));
         dataAttrInfo.attrLength = attrInfo.attrLength;
@@ -78,6 +87,27 @@ RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attri
         dataAttrInfo.isPrimaryKey = attrInfo.isPrimaryKey;
         dataAttrInfo.notNull = attrInfo.notNull;
         strcpy(dataAttrInfo.relName, relName);
+        dataAttrInfo.isDefault = attrInfo.isDefault;
+        if (attrInfo.isDefault){
+            if (attrInfo.defaultVal.isNull)
+                *((unsigned int*)dataAttrInfo.defaultVal) = NULL_MAGIC_NUMBER;  // 默认值为NULL，则用magicnumber来记载
+            else
+                switch (attrInfo.attrType){
+                    case T_INT:
+                        memcpy((void*)dataAttrInfo.defaultVal, (void*)&attrInfo.defaultVal.i, sizeof (int));
+                        // printf("Default Value = %d\n", attrInfo.defaultVal.i);
+                        break;
+                    case T_FLOAT:
+                        memcpy((void*)dataAttrInfo.defaultVal, (void*)&attrInfo.defaultVal.f, sizeof (float));
+                        break;
+                    case T_STRING:
+                        strcpy(dataAttrInfo.defaultVal, attrInfo.defaultVal.s.c_str());
+                        break;
+                    case T_DATE:
+                        strcpy(dataAttrInfo.defaultVal, attrInfo.defaultVal.s.c_str());
+                        break;
+                }
+        }
         record_size += attrInfo.attrLength;
 
         if (attrs.find(string(attrInfo.attrName)) == attrs.end())
@@ -86,7 +116,7 @@ RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attri
         }
         else
         {
-            cerr << "Duplicate Attribute Name!" << endl;
+            cerr << "[ERROR] Duplicate Attribute Name!" << endl;
             return RETVAL_ERR;
         }
         RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
@@ -104,6 +134,10 @@ RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attri
     dataRelInfo.attrCount = attrCount;
     dataRelInfo.recordSize = record_size;
     dataRelInfo.indexCount = 0;
+    dataRelInfo.primaryCount = 0;
+    for (int i = 0; i < attrCount; ++i)
+        if (attributes[i].isPrimaryKey > 0)
+            dataRelInfo.primaryCount++;
     fileHandle = recordManager->openFile(kDefaultRelCatName);
     RETURNIF(fileHandle->insertRecord((const char*)&dataRelInfo, recordID));
 
@@ -125,7 +159,7 @@ RETVAL DBHandle::dropTable(const char *relName) {
     }
     if(!found)
     {
-        cerr << "No Such Table!" << endl;
+        cerr << "[ERROR] No Such Table!" << endl;
         return RETVAL_ERR;
     }
 
@@ -222,7 +256,7 @@ RETVAL DBHandle::help(const char *relName) {
             descriptors.push_back(it->second);
     }
     if(descriptors.empty()) {
-        cerr << "No Such Relation: '" << relName << "'!" << endl;
+        cerr << "[ERROR] No Such Relation: '" << relName << "'!" << endl;
         return 0;
     }
     Printer::printAll(descriptors);
@@ -323,7 +357,7 @@ RETVAL DBHandle::fillAttributesFromTable(const char *relName, int &attrCount, Da
         }
     }
     if(i == relations.size()) {
-        cerr << "No Such Table" << endl;
+        cerr << "[ERROR] No Such Table" << endl;
         return RETVAL_ERR;
     }
     attrCount = relations[i].attrCount;
@@ -367,7 +401,7 @@ map<RecordID, RecordDescriptor> DBHandle::retrieveRecords(string relName, RETVAL
     int attrCount;
     rc = fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo);
     if(rc != RETVAL_OK) {
-        cerr << "Invalid relName" << endl;
+        cerr << "[ERROR] Invalid relName" << endl;
         return descriptors;
     }
 
@@ -438,7 +472,7 @@ RecordDescriptor DBHandle::retrieveOneRecord(std::string relName, const RecordID
     int attrCount;
     rc = fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo);
     if(rc != RETVAL_OK) {
-        cerr << "Invalid relName" << endl;
+        cerr << "[ERROR] Invalid relName" << endl;
         return RecordDescriptor();
     }
     RecordDescriptor recordDescriptor;

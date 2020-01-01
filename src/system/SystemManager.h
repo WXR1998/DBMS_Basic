@@ -43,7 +43,7 @@ public:
               std::vector<std::string> rels,
               std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
-    RETVAL Insert(std::string relName,
+    RETVAL Insert(std::string relName, std::vector<std::string>* attrs,
               std::vector<AttrValue> vals);
 
     RETVAL Update(std::string relName,

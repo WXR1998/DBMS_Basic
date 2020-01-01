@@ -17,13 +17,14 @@
 #define MAX_DEF  20
 #define MAX_RECORD_SIZE 4096
 #define MAX_CHECK_SIZE 10
+#define NULL_MAGIC_NUMBER 0x19980112u
 
 enum CmpOP {
     T_EQ, T_LT, T_GT, T_LE, T_GE, T_NE, T_NO, T_ISNOTNULL, T_ISNULL, T_IN
 };
 
 enum AttrType {
-    T_INT, T_FLOAT, T_STRING, T_DATE
+    T_INT, T_FLOAT, T_STRING, T_DATE, T_NONE
 };
 
 
@@ -73,11 +74,13 @@ struct AttrValue {
 };
 
 struct AttrInfo {
-    char attrName[MAX_NAME + 1];
+    char attrName[MAX_NAME + 1];   
     int attrLength;
     AttrType attrType;
     int isPrimaryKey;
     int notNull;
+    int isDefault;
+    AttrValue defaultVal;
 };
 
 struct DataAttrInfo {

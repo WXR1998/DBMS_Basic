@@ -78,6 +78,13 @@ void SelectTree::visit() {
 InsertTree::InsertTree(const char *relationName, InsertValueTree* insertValueTree) {
     this->relationName = string(relationName);
     this->insertValueTree = insertValueTree;
+    this->attrs = NULL;
+}
+
+InsertTree::InsertTree(const char *relationName, AttributesTree* attrs, InsertValueTree* insertValueTree) {
+    this->relationName = string(relationName);
+    this->insertValueTree = insertValueTree;
+    this->attrs = attrs;
 }
 
 InsertTree::~InsertTree() {
@@ -85,8 +92,16 @@ InsertTree::~InsertTree() {
 }
 
 void InsertTree::visit() {
-    for(const auto& constValues : insertValueTree->values) {
-        SystemManager::instance()->Insert(relationName, constValues->getConstValues());
+    std::vector<std::string> attrVector;
+    if (attrs != NULL){
+        auto des = attrs->getDescriptors();
+        for (auto t: des)
+            attrVector.push_back(t.attrName);
+        for(const auto& constValues : insertValueTree->values)
+            SystemManager::instance()->Insert(relationName, &attrVector, constValues->getConstValues());
+    }else{
+        for(const auto& constValues : insertValueTree->values)
+            SystemManager::instance()->Insert(relationName, NULL, constValues->getConstValues());
     }
 }
 
@@ -155,9 +170,14 @@ CreateTableTree::~CreateTableTree() {
 
 void CreateTableTree::visit() {
     int attrCount = columns->getColumnCount();
-    AttrInfo *attrInfos = columns->getAttrInfos();
-    SystemManager::instance()->createTable(tableName.c_str(), attrCount, attrInfos);
-    columns->deleteAttrInfos();
+    if (columns->error)
+        cerr << "[INFO] Operation Failed." << endl;
+    else{
+        AttrInfo *attrInfos = columns->getAttrInfos();
+        SystemManager::instance()->createTable(tableName.c_str(), attrCount, attrInfos);
+        // delete attrInfos;
+        // columns->deleteAttrInfos();
+    }
 }
 
 
@@ -222,6 +242,8 @@ void DropTableTree::visit() {
 
 /* ColumnsTree */
 ColumnsTree::ColumnsTree() {
+    attrInfos = NULL;
+    primaryCount = 0;
 }
 
 ColumnsTree::~ColumnsTree() {
@@ -230,13 +252,42 @@ ColumnsTree::~ColumnsTree() {
 }
 
 void ColumnsTree::addColumn(ColumnTree *column) {
-    for (const auto &col : columns)
-        if (col->columnName == column->columnName)
-            Error("duplicated column name");
-    columns.push_back(column);
+    if (!column->isPrimarySetTree){  // 是添加一列
+        for (const auto &col : columns)
+            if (col->columnName == column->columnName){
+                error = true;
+                cerr << "[ERROR] Duplicated column name." << endl;
+            }
+        columns.push_back(column);
+        if (column->error)
+            error = true;
+    }else{  // 是主键列表
+        if (primaryCount > 0){
+            error = true;
+            cerr << "[ERROR] Duplicated primary key." << endl;
+        }
+        PrimarySetTree* pst = static_cast<PrimarySetTree*>(column);
+        auto des = pst->attrs->getDescriptors();
+        primaryCount = des.size();
+        for (int i = 0; i < primaryCount; ++i){
+            bool found = false;
+            for (auto &col : columns)
+                if (col->columnName == des[i].attrName){
+                    col->isPrimaryKey = i + 1;      // 从1开始编号
+                    col->notNull = 1;
+                    found = true;
+                    break;
+                }
+            if (!found){
+                error = true;
+                cerr << "[ERROR] Primary key <" << des[i].attrName << "> not found. You should declare the attribute name first." << endl;
+            }
+        }
+    }
 }
 
 bool ColumnsTree::setPrimaryKey(const char *attr) {
+    printf("[WARNING] setPrimaryKey() is deprecated.\n");
     bool found = false;
     for(auto& tree : columns) {
         if(tree->columnName == string(attr)) {
@@ -277,12 +328,22 @@ ColumnTree::ColumnTree(const char *columnName, AttrType type, int size,
     if (defaultValue != NULL){
         this->isDefault = true;
         this->constDescriptor = defaultValue->getDescriptor();
-        if (this->constDescriptor.type != this->type)
-            Error("Default value is not of the same type.");
-    }
-    if(type == T_STRING)
+        if (this->constDescriptor.type == T_STRING && this->constDescriptor.s.length() > MAX_DEF){
+            error = true;
+            cerr << "[ERROR] Length of default string value should not exceed " << MAX_DEF << "." << endl;
+        }
+        if (this->constDescriptor.type != this->type){
+            error = true;
+            cerr << "[ERROR] Default value is not of the same type." << endl;
+        }
+    }else
+        this->isDefault = false;
+    
+    if(type == T_STRING || type == T_DATE)
         this->size++;
+    isPrimarySetTree = false;
 }
+ColumnTree::ColumnTree(){}
 
 void ColumnTree::setNotNull(int notNull) {
     this->notNull = notNull;
@@ -294,6 +355,8 @@ ColumnTree::~ColumnTree() {
 AttrInfo ColumnTree::getAttrInfo() {
     AttrInfo attrInfo;
     strcpy(attrInfo.attrName, columnName.c_str());
+    attrInfo.isDefault = isDefault;
+    attrInfo.defaultVal = constDescriptor;
     attrInfo.attrType = (AttrType) type;
     attrInfo.attrLength = size;
     attrInfo.isPrimaryKey = isPrimaryKey;
@@ -633,3 +696,8 @@ void SetClauseTree::addClause(const char *colName, ConstValueTree *constValue){
     clauses.push_back(make_pair(std::string(colName), constValue));
 }
 SetClauseTree::~SetClauseTree(){}
+
+PrimarySetTree::PrimarySetTree(AttributesTree *attrs):attrs(attrs) {
+    isPrimarySetTree = true;
+}
+PrimarySetTree::~PrimarySetTree(){}

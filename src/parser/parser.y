@@ -39,6 +39,7 @@ class Tree;
     TypeTree *typeTree;
     SetClauseTree *setClauseTree;
     OperatorTree *operatorTree;
+    PrimarySetTree *primarySetTree;
 }
 
 
@@ -169,6 +170,13 @@ tbStmt:
     | INSERT INTO tbName VALUES valueLists
         {
             $$ = new InsertTree($3, $5);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
+        }
+    | INSERT INTO tbName '(' columnList ')' VALUES valueLists
+        {
+            $$ = new InsertTree($3, $5, $8);
             Tree::setInstance($$);
             delete $3;
             Tree::run();
@@ -332,8 +340,8 @@ field:
         }
     | PRIMARY '(' columnList ')'
         {
-            // TODO
-            printf("TODO\n");
+            // 这里检查columnList里出现的所有名称是否在fieldList里出现过
+            $$ = new PrimarySetTree($3);
         }
     | FOREIGN '(' colName ')' REFERENCES tbName '(' colName ')'
         {

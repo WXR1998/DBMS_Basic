@@ -1,7 +1,18 @@
 #include <string.h>
+#include <cstdio>
 #include "Printer.h"
 #include "RecordDescriptor.h"
 using namespace std;
+
+string getHex(string str){
+    char buf[100] = {};
+    string res;
+    for (int i = 0; i < 6 && i < str.size(); ++i){
+        sprintf(buf, "%x ", (unsigned char)str.c_str()[i]);
+        res = res + string(buf);
+    }
+    return res;
+}
 
 void Printer::printHeader(std::vector<AttributeTree::AttributeDescriptor> attrs, ostream &c) {
     for(int i = 0; i < attrs.size(); ++i)
@@ -54,6 +65,9 @@ void Printer::printAll(vector<RecordDescriptor> recordDescriptors, ostream& c) {
                     case T_DATE :
                         c << val.s << " | ";
                         break;
+                    case T_NONE :
+                        c << getHex(val.s) << " | ";
+                        break;
                 }
             }
         }
@@ -81,6 +95,9 @@ void Printer::printBody(std::vector<RecordDescriptor> recordDescriptors, ostream
                     case T_DATE :
                         c << val.s << " | ";
                         break;
+                    case T_NONE :
+                        c << getHex(val.s) << " | ";
+                        break;
                 }
             }
         }
@@ -107,6 +124,9 @@ void Printer::printBody(RecordDescriptor recordDescriptor, ostream &c) {
                 case T_DATE :
                     c << val.s << " | ";
                     break;
+                case T_NONE :
+                    c << getHex(val.s) << " | ";
+                    break;
             }
         }
     }
@@ -132,6 +152,9 @@ void Printer::printBody(AttrValue val, std::vector<double> vals, ostream &c) {
             break;
         case T_DATE :
             c << val.s << " | ";
+            break;
+        case T_NONE :
+            c << getHex(val.s) << " | ";
             break;
     }
     for(int i = 0; i < vals.size(); ++i)
