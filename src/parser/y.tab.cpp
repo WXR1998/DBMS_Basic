@@ -2004,7 +2004,7 @@ yyreduce:
   case 58:
 #line 418 "parser.y" /* yacc.c:1646  */
     {
-            (yyval.constValueTree) = new ConstValueTree((yyvsp[0].string));
+            (yyval.constValueTree) = new ConstValueTree((yyvsp[0].string), true);
             delete (yyvsp[0].string);
         }
 #line 2011 "y.tab.cpp" /* yacc.c:1646  */

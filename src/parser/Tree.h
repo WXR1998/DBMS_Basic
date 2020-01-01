@@ -292,7 +292,7 @@ class ConstValueTree : public Tree {
 public:
     ConstValueTree(int i);
     ConstValueTree(float f);
-    ConstValueTree(const char *s);
+    ConstValueTree(const char *s, bool isDate = false);
     virtual ~ConstValueTree();
 
     AttrValue getDescriptor();

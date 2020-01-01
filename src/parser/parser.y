@@ -399,7 +399,7 @@ valueList:
 value:
     /*
         如果是一个合法日期，则输入的时候会识别为DATE
-        日期以双引号括起来，字符串以单引号括起来
+        日期以||括起来，字符串以单引号括起来
     */
     INTEGER
         {
@@ -416,7 +416,7 @@ value:
         }
     | DATE
         {
-            $$ = new ConstValueTree($1);
+            $$ = new ConstValueTree($1, true);
             delete $1;
         }
     | T_NULL

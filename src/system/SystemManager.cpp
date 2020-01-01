@@ -658,6 +658,16 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
     RETVAL rc = RETVAL_OK;
     vector<RecordDescriptor> records = select(attrs, rels, coms, rc);
     RETURNIF(rc);
+    if (attrs.empty()){
+        int attrCount;
+        DataAttrInfo* dataAttrInfo;
+        for (auto rel : rels){
+            RETURNIF(dbHandle.fillAttributesFromTable(rel.c_str(), attrCount, dataAttrInfo));
+            for (int i = 0; i < attrCount; ++i)
+                attrs.push_back((AttributeTree::AttributeDescriptor){string(rels.size()>1? rel : ""), string(dataAttrInfo[i].attrName)});
+            delete[] dataAttrInfo;
+        }
+    }
     if(records.empty()) {
         Printer::printHeader(attrs);
         return RETVAL_OK;
@@ -665,7 +675,6 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
     Printer::printHeader(attrs);
     Printer::printBody(records);
     return RETVAL_OK;
-    return 0;
 }
 
 
@@ -678,15 +687,15 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
 vector<RecordDescriptor> SystemManager::select(std::vector<AttributeTree::AttributeDescriptor> attrs,
                          std::vector<std::string> rels,
                          std::vector<ComparisonTree::ComparisonDescriptor> coms, RETVAL& rc) {
-    if (!checkRelations(rels)) {
+    if (!checkRelations(rels)) {    // 确认存在rels表
         rc = RETVAL_ERR;
         return vector<RecordDescriptor>();
     }
-    if (!checkAttributes(attrs, rels)) {
+    if (!checkAttributes(attrs, rels)) {    // 确认attrs都在rels表里
         rc = RETVAL_ERR;
         return vector<RecordDescriptor>();
     }
-    if (!checkComparisons(coms, rels)) {
+    if (!checkComparisons(coms, rels)) {    // 确认coms都在rels表里
         rc = RETVAL_ERR;
         return vector<RecordDescriptor>();
     }
@@ -696,11 +705,12 @@ vector<RecordDescriptor> SystemManager::select(std::vector<AttributeTree::Attrib
     vector<Comparison> crossrel_coms;
     for (const auto &com : coms)
         if (com.isAttrCmp == true && com.attr.relName != com.attr2.relName)
-            crossrel_coms.push_back(com);
+            crossrel_coms.push_back(com);   // 跨表比较
         else
-            inrel_coms.push_back(com);
+            inrel_coms.push_back(com);      // 同表比较
 
     // Comparisons in the same relation
+    // 对于每个
     vector<vector<RecordDescriptor>> validRecords;
     for (auto & rel : rels) {
         auto out = retrieveRecordsByIndex(rel, inrel_coms, rc);
@@ -711,6 +721,9 @@ vector<RecordDescriptor> SystemManager::select(std::vector<AttributeTree::Attrib
     return output;
 }
 
+/*
+    得到表连接的笛卡尔积
+*/
 void SystemManager::iterateCrossProduct(vector<vector<RecordDescriptor>> &records,
                                         vector<AttributeTree::AttributeDescriptor> attrs,
                                         vector<string> &rels,
@@ -718,7 +731,7 @@ void SystemManager::iterateCrossProduct(vector<vector<RecordDescriptor>> &record
                                         int depth,
                                         vector<RecordDescriptor>& output) {
     static vector<RecordDescriptor> crossproduct;
-    static vector<int> com_rels1;
+    static vector<int> com_rels1;       // 约束条件i的第一个attr属于哪个表
     static vector<int> com_rels2;
 
     // Check a cross-product

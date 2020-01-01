@@ -39,7 +39,6 @@ SelectTree::SelectTree(RelationsTree *relations, WhereClauseTree *whereClause) {
     this->attributes = nullptr;
     this->relations = relations;
     this->whereClause = whereClause;
-    this->groupAttrName = string();
 }
 
 SelectTree::SelectTree(AttributesTree *attributes,
@@ -542,9 +541,12 @@ ConstValueTree::ConstValueTree(float f) {
     this->isNull = false;
 }
 
-ConstValueTree::ConstValueTree(const char *s) {
+ConstValueTree::ConstValueTree(const char *s, bool isDate) {
     this->s = string(s, 1, strlen(s) - 2);
-    this->type = AttrType::T_STRING;
+    if (isDate)
+        this->type = AttrType::T_DATE;
+    else
+        this->type = AttrType::T_STRING;
     this->isNull = false;
 }
 
