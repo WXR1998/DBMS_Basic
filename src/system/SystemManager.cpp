@@ -620,12 +620,7 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName, string idx
         char* data;
         if(v.isNull)
             continue;
-        switch(v.type) {
-            case T_INT: data = (char*)&(v.i); break;
-            case T_FLOAT: data = (char*)&(v.f); break;
-            case T_STRING: data = (char*)(v.s.c_str()); break;
-            case T_DATE: data = (char*)(v.s.c_str()); break;
-        }
+        data = (char*)v.getElementPointer();
         indexHandle.InsertEntry(data, rid);
     }
     return RETVAL_OK;
@@ -870,7 +865,6 @@ void SystemManager::iterateCrossProduct(vector<vector<RecordDescriptor>> &record
     如果attrs == NULL，说明是直接插入全部数值
     否则只插入限定的attrs，其他的做非空判断，填入默认值
 
-    TODO
     如果主键存在索引，就在索引里找重复
     否则扫描文件，寻找是否有重复。如果没有才可插入
 */
@@ -880,69 +874,91 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
         return RETVAL_ERR;
     }
     RETVAL rc;
-    RecordDescriptor descriptor;
+    RecordDescriptor descriptor;            // descriptor给出的attr的顺序和原表一样
     if (attrs == NULL)
         descriptor = RecordDescriptor::createRecordDescriptor(relName, vals, rc);
     else
         descriptor = RecordDescriptor::createRecordDescriptor(relName, *attrs, vals, rc);
     
-    if(rc != RETVAL_OK) {
-        return rc;
-    }
+    if(rc != RETVAL_OK) return rc;
     SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
     Record record;
     rc = descriptor.toRecord(RecordID(), record);
-    if(rc != RETVAL_OK) {
-        return RETVAL_ERR;
+    if(rc != RETVAL_OK) return RETVAL_ERR;
+
+    // 检查是否已经存在主键
+    DataAttrInfo *dataAttrInfo;
+    vector<int> primaryKey;         // 主键元素在dataAttrInfo中的下标
+    int primaryCount;
+    int attrCount;
+    RETURNIF(dbHandle.fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo));
+
+    for (int i = 0, lim = dbHandle.relations.size(); i < lim; ++i)
+        if (strcmp(relName.c_str(), dbHandle.relations[i].relName) == 0){
+            primaryCount = dbHandle.relations[i].primaryCount;
+            break;
+        }
+
+    if (primaryCount > 0){  // 存在主键
+        for (int i = 1; i <= primaryCount; ++i)
+            for (int j = 0; j < attrCount; ++j)
+                if (dataAttrInfo[j].isPrimaryKey == i){
+                    primaryKey.push_back(j);
+                    break;
+                }
+        if (primaryCount == 1 && dataAttrInfo[primaryKey[0]].indexNo > 0){  // 是单主键，且该列存在索引，直接在索引里查找
+            int primaryKeyIndex = primaryKey[0];
+            // 主键一定非空，这在前面已经检查过了
+            char *data = (char*)descriptor.attrVals[primaryKeyIndex].getElementPointer();
+
+            SingleIndexHandler indexHandle;
+            IndexHandler::instance()->OpenIndex(relName.c_str(), dataAttrInfo[primaryKeyIndex].indexNo, indexHandle);
+            auto ret = indexHandle.ScanIndex(data, T_EQ);
+            if (ret.size() > 0){
+                cerr << "[ERROR] Duplicated primary key values." << endl;
+                return RETVAL_ERR;
+            }
+        }else{  // 是多主键或者单主键无索引，遍历整个表查找是否存在相同主键
+            vector<void*> values;
+            vector<AttrType> types;
+            vector<int> lengths;
+            vector<int> offsets;
+            for (int i = 0; i < primaryCount; ++i){
+                types.push_back(dataAttrInfo[primaryKey[i]].attrType);
+                lengths.push_back(dataAttrInfo[primaryKey[i]].attrLength);
+                offsets.push_back(dataAttrInfo[primaryKey[i]].offset);
+                values.push_back(descriptor.attrVals[primaryKey[i]].getElementPointer());
+            }
+            FileScan fileScan;
+            SingleFileHandler *fileHandle;
+            fileHandle = FileHandler::instance()->openFile(relName.c_str());
+            fileScan.openScan(*fileHandle, types, lengths, offsets, T_EQ, values);
+            Record _;
+            rc = fileScan.getNextRec(_);
+            if (rc != RETVAL_EOF){
+                cerr << "[ERROR] Duplicated primary key values." << endl;
+                return RETVAL_ERR;
+            }
+        }
     }
+    // 主键完整性检查完毕
+
     RecordID rid;
     fileHandle->insertRecord(record.getData(), rid);
 
-    // Check Index
-    int attrCount;
-    DataAttrInfo* dataAttrInfo;
-    RETURNIF(dbHandle.fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo));
-    for(int i = 0; i < attrCount; ++i) {
+    // 如果某列存在索引，则插入索引
+    for(int i = 0; i < attrCount; ++i)
         if(dataAttrInfo[i].indexNo != 0) {
-            // Insert Index
+            // 插入索引
             AttrValue v = descriptor[dataAttrInfo[i].attrName];
             char* data;
             if(v.isNull)
                 continue;
-            switch(v.type) {
-                case T_INT: data = (char*)&(v.i); break;
-                case T_FLOAT: data = (char*)&(v.f); break;
-                case T_STRING: data = (char*)(v.s.c_str()); break;
-                case T_DATE: data = (char*)(v.s.c_str()); break;
-            }
+            data = (char*)v.getElementPointer();
             SingleIndexHandler indexHandle;
             RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(), dataAttrInfo[i].indexNo, indexHandle));
             indexHandle.InsertEntry(data, rid);
         }
-    }
-
-        // void* data;
-        // if(primaryValue.type == T_INT)
-        //     data = (void*)&(primaryValue.i);
-        // else if(primaryValue.type == T_FLOAT)
-        //     data = (void*)&(primaryValue.f);
-        // else
-        //     data = (void*)(primaryValue.s.c_str());
-        // SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
-        // FileScan fileScan;
-        // fileScan.openScan(*fileHandle,
-        //                   primaryAttrInfo.attrType,
-        //                   primaryAttrInfo.attrLength,
-        //                   primaryAttrInfo.offset,
-        //                   CmpOP::T_EQ, data);
-        // Record record;
-        // rc = fileScan.getNextRec(record);
-        // if(rc != RETVAL_EOF) {
-        //     cerr << "[ERROR] Primary Key Duplicate!" << endl;
-        //     rc = RETVAL_ERR;
-        // }
-        // else
-        //     rc = RETVAL_OK;
 
     delete []dataAttrInfo;
     return RETVAL_OK;
@@ -1045,11 +1061,7 @@ RETVAL SystemManager::Update(std::string relName,
                         char* data;
                         if(v.isNull)
                             continue;
-                        switch(v.type) {
-                            case T_INT: data = (char*)&(v.i); break;
-                            case T_FLOAT: data = (char*)&(v.f); break;
-                            case T_STRING: data = (char*)(v.s.c_str()); break;
-                        }
+                        data = (char*)v.getElementPointer();
                         SingleIndexHandler indexHandle;
                         RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
                                                                      dataAttrInfo[i].indexNo,
@@ -1075,11 +1087,7 @@ RETVAL SystemManager::Update(std::string relName,
                         char* data;
                         if(v.isNull)
                             continue;
-                        switch(v.type) {
-                            case T_INT: data = (char*)&(v.i); break;
-                            case T_FLOAT: data = (char*)&(v.f); break;
-                            case T_STRING: data = (char*)(v.s.c_str()); break;
-                        }
+                        data = (char*)v.getElementPointer();
                         SingleIndexHandler indexHandle;
                         RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
                                                                      dataAttrInfo[i].indexNo,
@@ -1131,11 +1139,7 @@ RETVAL SystemManager::Update(std::string relName,
                 char* data;
                 if(v.isNull)
                     continue;
-                switch(v.type) {
-                    case T_INT: data = (char*)&(v.i); break;
-                    case T_FLOAT: data = (char*)&(v.f); break;
-                    case T_STRING: data = (char*)(v.s.c_str()); break;
-                }
+                data = (char*)v.getElementPointer();
                 SingleIndexHandler indexHandle;
                 RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
                                                              dataAttrInfo[i].indexNo,
@@ -1161,11 +1165,7 @@ RETVAL SystemManager::Update(std::string relName,
                 char* data;
                 if(v.isNull)
                     continue;
-                switch(v.type) {
-                    case T_INT: data = (char*)&(v.i); break;
-                    case T_FLOAT: data = (char*)&(v.f); break;
-                    case T_STRING: data = (char*)(v.s.c_str()); break;
-                }
+                data = (char*)v.getElementPointer();
                 SingleIndexHandler indexHandle;
                 RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
                                                              dataAttrInfo[i].indexNo,
@@ -1209,11 +1209,7 @@ RETVAL SystemManager::Delete(std::string relName, std::vector<ComparisonTree::Co
                     char* data;
                     if(v.isNull)
                         continue;
-                    switch(v.type) {
-                        case T_INT: data = (char*)&(v.i); break;
-                        case T_FLOAT: data = (char*)&(v.f); break;
-                        case T_STRING: data = (char*)(v.s.c_str()); break;
-                    }
+                    data = (char*)v.getElementPointer();
                     SingleIndexHandler indexHandle;
                     RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
                                                                  dataAttrInfo[i].indexNo,
@@ -1438,12 +1434,7 @@ vector<RecordDescriptor> SystemManager::retrieveRecordsByIndex(string relName,
             char* data;
             if(v.isNull)
                 continue;
-            switch(v.type) {
-                case T_INT: data = (char*)&(v.i); break;
-                case T_FLOAT: data = (char*)&(v.f); break;
-                case T_STRING: data = (char*)(v.s.c_str()); break;
-                case T_DATE: data = (char*)(v.s.c_str()); break;
-            }
+            data = (char*)v.getElementPointer();
 
 
             SingleIndexHandler indexHandle;

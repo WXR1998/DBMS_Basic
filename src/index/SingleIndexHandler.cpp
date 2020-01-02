@@ -247,6 +247,7 @@ AttrValue SingleIndexHandler::toAttrValue(char *pData) {
         case T_INT: val.i = *((int *) pData); break;
         case T_FLOAT: val.f = *((float *) pData); break;
         case T_STRING: val.s = string(pData, (unsigned long) attrLength);
+        case T_DATE: val.s = string(pData, (unsigned long) attrLength);
     }
     return val;
 }

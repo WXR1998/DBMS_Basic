@@ -112,7 +112,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
         if(vals[i].isNull) {
             if(dataAttrInfo[i].notNull) {
                 // Check NULL
-                cerr << "[ERROR] Insert NULL into NOT NULL Attribute!" << endl;
+                cerr << "[ERROR] Insert NULL into NOT NULL attribute." << endl;
                 rc = RETVAL_ERR;
                 return recordDescriptor;
             }
@@ -135,7 +135,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
             recordDescriptor.attrVals.push_back(vals[i]);
         }
         else {
-            cerr << "[ERROR] Input Type InValid" << endl;
+            cerr << "[ERROR] Input type is invalid." << endl;
             rc = RETVAL_ERR;
             return recordDescriptor;
         }
@@ -247,7 +247,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
             if(vals[idx].isNull) {
                 if(dataAttrInfo[i].notNull) {
                     // Check NULL
-                    cerr << "[ERROR] Insert NULL into NOT NULL Attribute!" << endl;
+                    cerr << "[ERROR] Insert NULL into NOT NULL attribute!" << endl;
                     rc = RETVAL_ERR;
                     return recordDescriptor;
                 }
@@ -263,7 +263,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
                 recordDescriptor.attrVals.push_back(vals[idx]);
             }
             else {
-                cerr << "[ERROR] Input Type InValid" << endl;
+                cerr << "[ERROR] Input type is invalid." << endl;
                 rc = RETVAL_ERR;
                 return recordDescriptor;
             }

@@ -71,6 +71,20 @@ struct AttrValue {
     bool operator <=(const AttrValue &val) const;
     bool operator > (const AttrValue &val) const;
     bool operator < (const AttrValue &val) const;
+
+    void* getElementPointer() {
+        switch (type){
+            case T_INT:
+                return (void*)(&i);
+            case T_FLOAT:
+                return (void*)(&f);
+            case T_STRING:
+                return (void*)(s.c_str());
+            case T_DATE:
+                return (void*)(s.c_str());
+        }
+        return NULL;
+    }
 };
 
 struct AttrInfo {
