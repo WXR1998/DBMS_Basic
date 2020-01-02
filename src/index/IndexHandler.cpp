@@ -21,7 +21,7 @@ IndexHandler *IndexHandler::instance() {
 }
 
 RETVAL IndexHandler::CreateIndex(const char *fileName, int indexNo, AttrType attrType, int attrLength) {
-    string indexfile = string(fileName) + to_string(indexNo);
+    string indexfile = string(fileName) + "_idx_" + to_string(indexNo);
     int indexSize = BNode::NodeSize(attrLength);
     recordManager->createFile(indexfile.c_str(), indexSize);
 
@@ -40,12 +40,12 @@ RETVAL IndexHandler::CreateIndex(const char *fileName, int indexNo, AttrType att
 
 RETVAL IndexHandler::DestroyIndex(const char *fileName, int indexNo) {
     // Assume that SM already remove info about index in sysrel
-    recordManager->destroyFile((string(fileName) + to_string(indexNo)).c_str());
+    recordManager->destroyFile((string(fileName) + "_idx_" + to_string(indexNo)).c_str());
     return 0;
 }
 
 RETVAL IndexHandler::OpenIndex(const char *fileName, int indexNo, SingleIndexHandler &indexHandle) {
-    string indexfile = string(fileName) + to_string(indexNo);
+    string indexfile = string(fileName) + "_idx_" + to_string(indexNo);
     indexHandle.OpenIndex(indexfile.c_str());
     return 0;
 }

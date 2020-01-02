@@ -25,8 +25,8 @@ public:
     // Relation Operations
     RETVAL createTable(const char *relName, int attrCount, AttrInfo *attributes);
     RETVAL dropTable(const char *relName);
-    RETVAL createIndex(std::string relName, AttributeTree::AttributeDescriptor attr);
-    RETVAL dropIndex(std::string relName, AttributeTree::AttributeDescriptor attr);
+    RETVAL createIndex(std::string relName, AttributeTree::AttributeDescriptor attr, std::string idxName);
+    RETVAL dropIndex(std::string relName, std::string idxName);
     RETVAL load(const char *relName, const char *fileName);
     RETVAL help();
     std::vector<std::vector<string> > qHelp();
@@ -80,6 +80,7 @@ private:
     // Return true if there is a attribute name attrName in the relation
     // Assuming that we've got a relation named relName
     bool hasAttribute(const char *relName, const char *attrName) {return dbHandle.hasAttribute(relName, attrName);}
+    bool hasIndex(const char *relName, const char *idxName) {return dbHandle.hasIndex(relName, idxName);}
 
     typedef ComparisonTree::ComparisonDescriptor Comparison;
     typedef AttributeTree::AttributeDescriptor Attribute;

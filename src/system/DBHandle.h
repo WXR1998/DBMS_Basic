@@ -31,6 +31,7 @@ public:
     // Return true if there is a attribute name attrName in the relation
     // Assuming that we've got a relation named relName
     bool hasAttribute(const char *relName, const char *attrName);
+    bool hasIndex(const char *relName, const char *idxName);
 
     typedef ComparisonTree::ComparisonDescriptor Comparison;
     typedef AttributeTree::AttributeDescriptor Attribute;
@@ -44,8 +45,12 @@ private:
 
     std::vector<DataAttrInfo> attributes;
     std::vector<DataRelInfo> relations;
+    std::vector<DataIdxInfo> indexes;
+    std::vector<DataFkInfo> foreignKeys;
     std::vector<RecordID> relationRecordIDs;
     std::vector<RecordID> attributeRecordIDs;
+    std::vector<RecordID> indexRecordIDs;
+    std::vector<RecordID> foreignKeyRecordIDs;
 };
 
 

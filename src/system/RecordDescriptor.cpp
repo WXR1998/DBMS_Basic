@@ -140,6 +140,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
             return recordDescriptor;
         }
     }
+
     // Check Primary Key
     // if(hasPrimaryKey) {
     //     void* data;

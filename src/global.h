@@ -117,6 +117,12 @@ struct DataFkInfo {
     char masAttr3Name[MAX_NAME + 1];// 主表attr3
 };
 
+struct DataIdxInfo {
+    char idxName[MAX_NAME + 1];     // 索引名
+    char relName[MAX_NAME + 1];     // 表名
+    char attrName[MAX_NAME + 1];    // 列名
+};
+
 typedef int RETVAL;
 
 #define RETVAL_OK               0
@@ -142,6 +148,7 @@ inline void PrintError(int line, const char* file, const char* func) {
 #define kDefaultRelCatName "relcat"
 #define kDefaultAttrCatName "attrcat"
 #define kDefaultFkCatName "fkcat"
+#define kDefaultIdxCatName "idxcat"
 #define kDefaultCheckCatName "checkcat"
 
 template < typename T > std::string to_string( const T& n )

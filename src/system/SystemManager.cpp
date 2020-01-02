@@ -49,18 +49,17 @@ RETVAL SystemManager::createDB(const char *dbName) {
     chdir(dbName);
 #endif
 
-    // Then create two catalogs
-    // 这两个表记录了当前database中各个table的的相关信息
+    // 当前database中各个table的的相关信息
     /*
 
     - RelCat:
-        table名, table一条记录的长度, table的attr数量, table有多少条index   |   table是否有主键
-
+        table名, table一条记录的长度, table的attr数量, table有多少行, table是否有主键
     - AttrCat:
-        table名, attr名, attr在记录中的偏移, attr类型, attr长度, attr排序编号, 在主键中的排序编号, 是否非空   |   attr是否存在默认值, 默认值
-
+        table名, attr名, attr在记录中的偏移, attr类型, attr长度, attr索引编号, 在主键中的排序编号, 是否非空, attr是否存在默认值, 默认值
     - FkCat:
         fk名, 从table, 主table, attr数, 从attr1, 从attr2，从attr3, 主attr1, 主attr2, 主attr3
+    - IdxCat:
+        idxName, table名, attr名
 
     */
 
@@ -94,9 +93,21 @@ RETVAL SystemManager::createDB(const char *dbName) {
     strcpy(dataRelInfo.relName, kDefaultFkCatName);
     RETURNIF(fileHandle->insertRecord((const char*)&dataRelInfo, recordID));
 
+    memset(&dataRelInfo, 0, sizeof(DataRelInfo));
+    dataRelInfo.recordSize = sizeof(DataIdxInfo);
+    dataRelInfo.indexCount = 0;
+    dataRelInfo.attrCount = 3;
+    dataRelInfo.primaryCount = 0;
+    strcpy(dataRelInfo.relName, kDefaultIdxCatName);
+    RETURNIF(fileHandle->insertRecord((const char*)&dataRelInfo, recordID));
+
     // FkCat
     RETURNIF(recordManager->createFile(kDefaultFkCatName, sizeof(DataFkInfo)));
     fileHandle = recordManager->openFile(kDefaultFkCatName);
+
+    // IdxCat
+    RETURNIF(recordManager->createFile(kDefaultIdxCatName, sizeof(DataIdxInfo)));
+    fileHandle = recordManager->openFile(kDefaultIdxCatName);
 
     // AttrCat
     // attr in relCat
@@ -407,6 +418,43 @@ RETVAL SystemManager::createDB(const char *dbName) {
     dataAttrInfo.notNull = 0;
     RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
 
+    // attr in idxCat
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultIdxCatName);
+    strcpy(dataAttrInfo.attrName, "idxName");
+    dataAttrInfo.offset = offsetof(DataIdxInfo, idxName);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultIdxCatName);
+    strcpy(dataAttrInfo.attrName, "relName");
+    dataAttrInfo.offset = offsetof(DataIdxInfo, relName);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
+    memset(dataAttrInfo.relName, 0, MAX_NAME + 1);
+    memset(dataAttrInfo.attrName, 0, MAX_NAME + 1);
+    strcpy(dataAttrInfo.relName, kDefaultIdxCatName);
+    strcpy(dataAttrInfo.attrName, "attrName");
+    dataAttrInfo.offset = offsetof(DataIdxInfo, attrName);
+    dataAttrInfo.attrLength = MAX_NAME + 1;
+    dataAttrInfo.attrType = AttrType::T_STRING;
+    dataAttrInfo.indexNo = 0;
+    dataAttrInfo.isPrimaryKey = 0;
+    dataAttrInfo.notNull = 0;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
+
 #ifdef __MINGW32__
     RETURNIF(chdir(kDefaultDBPosition));
 #else
@@ -467,12 +515,15 @@ RETVAL SystemManager::createTable(const char *relName, int attrCount, AttrInfo *
         cerr << "[ERROR] Please Open DB first!" << endl;
         return RETVAL_ERR;
     }
+    if (hasRelation(relName)){
+        cerr << "[ERROR] There is a table named <" << relName << ">." << endl;
+        return RETVAL_ERR;
+    }
     RETURNIF(dbHandle.createTable(relName, attrCount, attributes));
     return RETVAL_OK;
 }
 
 RETVAL SystemManager::dropTable(const char *relName) {
-
     if(strcmp(relName, kDefaultRelCatName) == 0 ||
             strcmp(relName, kDefaultAttrCatName) == 0)
         return RETVAL_ERR;
@@ -480,8 +531,11 @@ RETVAL SystemManager::dropTable(const char *relName) {
     return RETVAL_OK;
 }
 
-RETVAL SystemManager::createIndex(string relName, Attribute attrName) {
-    hasRelation(relName.c_str());
+RETVAL SystemManager::createIndex(string relName, Attribute attrName, string idxName) {
+    if (!hasRelation(relName.c_str())){
+        cerr << "[ERROR] No such relation." << endl;
+        return RETVAL_ERR;
+    }
 
     // check whether the relName has already owned a index;
     DataAttrInfo attrData;
@@ -500,11 +554,15 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName) {
         }
     }
     if(!found) {
-        cerr << "No Such Attribute!" << endl;
+        cerr << "[ERROR] No such attribute to create index." << endl;
         return RETVAL_ERR;
     }
     if(foundIndex) {
-        cerr << "Already Have Index for this attribute!" << endl;
+        cerr << "[ERROR] Already have index for this attribute." << endl;
+        return RETVAL_ERR;
+    }
+    if (hasIndex(relName.c_str(), idxName.c_str())){
+        cerr << "[ERROR] Already have an index which has the same idxName on <" << relName << ">." << endl;
         return RETVAL_ERR;
     }
 
@@ -523,6 +581,8 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName) {
     indexCount++;
     attrData.indexNo = indexCount;
     relInfo.indexCount = indexCount;
+    // 索引编号是每个表的属性，每次增大1
+
     // Update IndexNo in attrcat
     SingleFileHandler* fileHandle = recordManager->openFile(kDefaultAttrCatName);
     Record record(attrRecordID, (char*)(&attrData), sizeof(DataAttrInfo));
@@ -532,6 +592,14 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName) {
     Record record1(relRecordID, (char*)(&relInfo), sizeof(DataRelInfo));
     fileHandle->updateRecord(record1);
     recordManager->closeFile();
+    // Update index info in idxcat
+    fileHandle = recordManager->openFile(kDefaultIdxCatName);
+    RecordID rid;
+    DataIdxInfo dataIdxInfo;
+    strcpy(dataIdxInfo.idxName, idxName.c_str());
+    strcpy(dataIdxInfo.attrName, attrName.attrName.c_str());
+    strcpy(dataIdxInfo.relName, relName.c_str());
+    fileHandle->insertRecord((const char*)&dataIdxInfo, rid);
 
     dbHandle.refreshHandle();
 
@@ -541,7 +609,7 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName) {
                                                    attrData.attrType,
                                                    attrData.attrLength));
     SingleIndexHandler indexHandle;
-    // Retrieve
+    // 把当前所有行的对应列的值放进B+树
     RETVAL rc;
     auto records = retrieveRecords(relName, rc);
     RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(), indexCount, indexHandle));
@@ -556,52 +624,67 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName) {
             case T_INT: data = (char*)&(v.i); break;
             case T_FLOAT: data = (char*)&(v.f); break;
             case T_STRING: data = (char*)(v.s.c_str()); break;
+            case T_DATE: data = (char*)(v.s.c_str()); break;
         }
         indexHandle.InsertEntry(data, rid);
     }
-    return 0;
+    return RETVAL_OK;
 }
 
-RETVAL SystemManager::dropIndex(string relName, Attribute attrName) {
-    hasRelation(relName.c_str());
+RETVAL SystemManager::dropIndex(string relName, string idxName) {
+    /*
+        删除一个索引分为3个部分
+        1、 在attrcat中把indexNo部分清零
+        2、 由于在relcat中，indexCount列表示的是“当前列一共创建过的索引个数”，并且创建新的索引需要使用该值以避免问题，所以不应该修改relcat中的值
+        3、 删掉索引文件
+        4、 在idxcat中删去对应行
+    */
+    if (!hasRelation(relName.c_str())){
+        cerr << "[ERROR] No such relation." << endl;
+        return RETVAL_ERR;
+    }
+    if (!hasIndex(relName.c_str(), idxName.c_str())){
+        cerr << "[ERROR] No such index name." << endl;
+        return RETVAL_ERR;
+    }
 
-    // check whether the relName has already owned a index;
-    DataAttrInfo attrData;
-    bool found = false;
-    bool foundIndex = false;
-    RecordID attrRecordID;
-    for(int i = 0; i < dbHandle.attributes.size(); ++i) {
-        if(dbHandle.attributes[i].attrName == attrName.attrName && dbHandle.attributes[i].relName == relName) {
-            found = true;
-            attrRecordID = dbHandle.attributeRecordIDs[i];
-            attrData = dbHandle.attributes[i];
-            if(dbHandle.attributes[i].indexNo != 0)
-                foundIndex = true;
+    RecordID indexRID;
+    char attrName[MAX_NAME + 1] = {};
+    for (int i = 0, lim = dbHandle.indexes.size(); i < lim; ++i)
+        if (strcmp(dbHandle.indexes[i].idxName, idxName.c_str()) == 0 && strcmp(dbHandle.indexes[i].relName, relName.c_str()) == 0){
+            strcpy(attrName, dbHandle.indexes[i].attrName);
+            indexRID = dbHandle.indexRecordIDs[i];
             break;
         }
-    }
-    if(!found) {
-        cerr << "No Such Attribute!" << endl;
-        return RETVAL_ERR;
-    }
-    if(!foundIndex) {
-        cerr << "Index for this attribute Not Created!!" << endl;
-        return RETVAL_ERR;
-    }
+
+    DataAttrInfo attrData;
+    RecordID attrRID;
+    for (int i = 0, lim = dbHandle.attributes.size(); i < lim; ++i)
+        if (strcmp(dbHandle.attributes[i].attrName, attrName) == 0 && strcmp(dbHandle.attributes[i].relName, relName.c_str()) == 0){
+            attrRID = dbHandle.attributeRecordIDs[i];
+            attrData = dbHandle.attributes[i];
+            break;
+        }
 
     int indexNo = attrData.indexNo;
+    // 在attrcat中清零indexNo部分
     attrData.indexNo = 0;
-    // Update IndexNo in attrcat
-    SingleFileHandler* fileHandle = recordManager->openFile(kDefaultAttrCatName);
-    Record record(attrRecordID, (char*)(&attrData), sizeof(DataAttrInfo));
-    fileHandle->updateRecord(record);
+    SingleFileHandler *fileHandler = recordManager->openFile(kDefaultAttrCatName);
+    Record record(attrRID, (char*)(&attrData), sizeof (DataAttrInfo));
+    fileHandler->updateRecord(record);
+    recordManager->closeFile();
+    // 删除索引文件
+    RETURNIF(IndexHandler::instance()->DestroyIndex(relName.c_str(), indexNo));
+    // 在idxcat中删去对应行
+    fileHandler = recordManager->openFile(kDefaultIdxCatName);
+    int pag, slt;
+    indexRID.getPageID(pag);
+    indexRID.getSlotID(slt);
+    RETURNIF(fileHandler->deleteRecord(indexRID));
     recordManager->closeFile();
 
     dbHandle.refreshHandle();
-
-    // Build Up Index
-    RETURNIF(IndexHandler::instance()->DestroyIndex(relName.c_str(), indexNo));
-    return 0;
+    return RETVAL_OK;
 }
 
 RETVAL SystemManager::load(const char *relName, const char *fileName) {
@@ -610,7 +693,7 @@ RETVAL SystemManager::load(const char *relName, const char *fileName) {
 
 RETVAL SystemManager::help() {
     if(!hasOpenDB) {
-        cerr << "[ERROR] Please Open DB first" << endl;
+        cerr << "[ERROR] Please Open DB first." << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.help());
@@ -624,7 +707,7 @@ std::vector<std::vector<string>> SystemManager::qHelp()
 
 RETVAL SystemManager::help(const char *relName) {
     if(!hasOpenDB) {
-        cerr << "[ERROR] Please Open DB first" << endl;
+        cerr << "[ERROR] Please Open DB first." << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.help(relName));
@@ -786,6 +869,10 @@ void SystemManager::iterateCrossProduct(vector<vector<RecordDescriptor>> &record
     向relName里插入一条Record，它的值列表为vals
     如果attrs == NULL，说明是直接插入全部数值
     否则只插入限定的attrs，其他的做非空判断，填入默认值
+
+    TODO
+    如果主键存在索引，就在索引里找重复
+    否则扫描文件，寻找是否有重复。如果没有才可插入
 */
 RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attrs, std::vector<AttrValue> vals) {
     if (!hasRelation(relName.c_str())) {
@@ -833,6 +920,29 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
             indexHandle.InsertEntry(data, rid);
         }
     }
+
+        // void* data;
+        // if(primaryValue.type == T_INT)
+        //     data = (void*)&(primaryValue.i);
+        // else if(primaryValue.type == T_FLOAT)
+        //     data = (void*)&(primaryValue.f);
+        // else
+        //     data = (void*)(primaryValue.s.c_str());
+        // SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
+        // FileScan fileScan;
+        // fileScan.openScan(*fileHandle,
+        //                   primaryAttrInfo.attrType,
+        //                   primaryAttrInfo.attrLength,
+        //                   primaryAttrInfo.offset,
+        //                   CmpOP::T_EQ, data);
+        // Record record;
+        // rc = fileScan.getNextRec(record);
+        // if(rc != RETVAL_EOF) {
+        //     cerr << "[ERROR] Primary Key Duplicate!" << endl;
+        //     rc = RETVAL_ERR;
+        // }
+        // else
+        //     rc = RETVAL_OK;
 
     delete []dataAttrInfo;
     return RETVAL_OK;

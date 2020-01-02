@@ -228,13 +228,19 @@ idxStmt:
         }
     | ALTER TABLE tbName ADD INDEX idxName '(' columnList ')'
         {
-            // TODO
-            printf("TODO\n");
+            $$ = new CreateIndexTree($6, $3, $8);
+            Tree::setInstance($$);
+            delete $3;
+            delete $6;
+            Tree::run();
         }
     | ALTER TABLE tbName DROP INDEX idxName
         {
-            // TODO
-            printf("TODO\n");
+            $$ = new DropIndexTree($6, $3);
+            Tree::setInstance($$);
+            delete $3;
+            delete $6;
+            Tree::run();
         }
     ;
     

@@ -193,9 +193,13 @@ CreateIndexTree::~CreateIndexTree() {
 
 void CreateIndexTree::visit() {
     // TODO MODIFY
-    // 从单索引变成了多索引 需要修改
-    // auto attr = attribute->getDescriptor();
-    // SystemManager::instance()->createIndex(relName, attr);
+    // 从单索引变成了多索引 需要修改        不改了
+    if (attribute->getDescriptors().size() > 1)
+        cerr << "[WARNING] This DB only support one-attribute indexing. This command is ignored." << endl;
+    else{
+        auto attr = attribute->getDescriptors()[0];
+        SystemManager::instance()->createIndex(relName, attr, idxName);
+    }
 }
 
 
@@ -208,10 +212,7 @@ DropIndexTree::~DropIndexTree() {
 }
 
 void DropIndexTree::visit() {
-    // auto attr = attribute->getDescriptor();
-    // SystemManager::instance()->dropIndex(relName, attr);
-    // TODO MODIFY
-    // 修改为：删除某个索引名对应的索引信息
+    SystemManager::instance()->dropIndex(relName, idxName);
 }
 
 

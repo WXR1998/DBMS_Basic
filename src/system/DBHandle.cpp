@@ -14,11 +14,16 @@ DBHandle::DBHandle() {
 }
 
 
+// 从系统表中重新获得信息
 RETVAL DBHandle::refreshHandle() {
     relations.clear();
     attributes.clear();
+    foreignKeys.clear();
+    indexes.clear();
     relationRecordIDs.clear();
     attributeRecordIDs.clear();
+    foreignKeyRecordIDs.clear();
+    indexRecordIDs.clear();
     FileHandler *recordManager = FileHandler::instance();
     SingleFileHandler* fileHandle = recordManager->openFile(kDefaultRelCatName);
     FileScan fileScan;
@@ -55,6 +60,41 @@ RETVAL DBHandle::refreshHandle() {
         attributeRecordIDs.push_back(record.getRid());
     }
     RETURNIF(fileScan.closeScan());
+
+    fileHandle = recordManager->openFile(kDefaultFkCatName);
+    RETURNIF(fileScan.openScan(*fileHandle, AttrType::T_INT, sizeof(int), 0, CmpOP::T_NO, nullptr));
+    rc = RETVAL_OK;
+    while (rc != RETVAL_EOF) {
+        rc = fileScan.getNextRec(record);
+        if(rc == RETVAL_ERR) {
+            return rc;
+        }
+        if(rc == RETVAL_EOF) {
+            break;
+        }
+        DataFkInfo* dataFkInfo = (DataFkInfo*) record.getData();
+        foreignKeys.push_back(*dataFkInfo);
+        foreignKeyRecordIDs.push_back(record.getRid());
+    }
+    RETURNIF(fileScan.closeScan());
+
+    fileHandle = recordManager->openFile(kDefaultIdxCatName);
+    RETURNIF(fileScan.openScan(*fileHandle, AttrType::T_INT, sizeof(int), 0, CmpOP::T_NO, nullptr));
+    rc = RETVAL_OK;
+    while (rc != RETVAL_EOF) {
+        rc = fileScan.getNextRec(record);
+        if(rc == RETVAL_ERR) {
+            return rc;
+        }
+        if(rc == RETVAL_EOF) {
+            break;
+        }
+        DataIdxInfo* dataIdxInfo = (DataIdxInfo*) record.getData();
+        indexes.push_back(*dataIdxInfo);
+        indexRecordIDs.push_back(record.getRid());
+    }
+    RETURNIF(fileScan.closeScan());
+
     return RETVAL_OK;
 }
 
@@ -515,4 +555,11 @@ RecordDescriptor DBHandle::retrieveOneRecord(std::string relName, const RecordID
     }
     recordDescriptor.relName = relName;
     return recordDescriptor;
+}
+
+bool DBHandle::hasIndex(const char *relName, const char *idxName){
+    for (int i = 0, lim = indexes.size(); i < lim; ++i)
+        if (strcmp(relName, indexes[i].relName) == 0 && strcmp(idxName, indexes[i].idxName) == 0)
+            return true;
+    return false;
 }
