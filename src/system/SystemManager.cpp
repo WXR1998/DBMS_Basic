@@ -510,8 +510,7 @@ RETVAL SystemManager::closeDB() {
 }
 
 RETVAL SystemManager::createTable(const char *relName, int attrCount, AttrInfo *attributes) {
-    if(!hasOpenDB)
-    {
+    if(!hasOpenDB) {
         cerr << "[ERROR] Please Open DB first!" << endl;
         return RETVAL_ERR;
     }
@@ -524,9 +523,24 @@ RETVAL SystemManager::createTable(const char *relName, int attrCount, AttrInfo *
 }
 
 RETVAL SystemManager::dropTable(const char *relName) {
-    if(strcmp(relName, kDefaultRelCatName) == 0 ||
-            strcmp(relName, kDefaultAttrCatName) == 0)
-        return RETVAL_ERR;
+    if(strcmp(relName, kDefaultRelCatName) == 0 || strcmp(relName, kDefaultAttrCatName) == 0 
+        || strcmp(relName, kDefaultFkCatName) == 0 || strcmp(relName, kDefaultIdxCatName) == 0){
+            cerr << "[ERROR] You cannot drop a system table." << endl;
+            return RETVAL_ERR;
+    }
+
+    // 删除一个表之前，要先把它的索引、外键都删除
+
+    // 删除索引
+    vector<const char*> indexNames;
+    for (int i = 0, lim = dbHandle.indexes.size(); i < lim; ++i)
+        if (strcmp(dbHandle.indexes[i].relName, relName) == 0)
+            indexNames.push_back(dbHandle.indexes[i].idxName);
+    for (int i = 0, lim = indexNames.size(); i < lim; ++i)
+        dropIndex(relName, indexNames[i]);
+
+    // TODO 删除所有外键
+
     RETURNIF(dbHandle.dropTable(relName));
     return RETVAL_OK;
 }
@@ -750,8 +764,9 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
         Printer::printHeader(attrs);
         return RETVAL_OK;
     }
-    Printer::printHeader(attrs);
-    Printer::printBody(records);
+    // Printer::printHeader(attrs);
+    // Printer::printBody(records, attrs);
+    Printer::printAll(records, &attrs);
     return RETVAL_OK;
 }
 

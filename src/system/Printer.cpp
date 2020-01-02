@@ -1,8 +1,23 @@
 #include <string.h>
 #include <cstdio>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <iomanip>
+#include <vector>
 #include "Printer.h"
 #include "RecordDescriptor.h"
 using namespace std;
+
+int Printer::attrLenSum;
+vector<int> Printer::widths;
+
+template <class T>
+int length(T obj){
+    ostringstream ss;
+    ss << obj;
+    return ss.str().size();
+}
 
 string getHex(string str){
     char buf[100] = {};
@@ -14,150 +29,144 @@ string getHex(string str){
     return res;
 }
 
-void Printer::printHeader(std::vector<AttributeTree::AttributeDescriptor> attrs, ostream &c) {
-    for(int i = 0; i < attrs.size(); ++i)
-    {
-        if(attrs[i].relName.empty()) {
-            c << attrs[i].attrName << " | ";
+void Printer::printHeader(std::vector<AttributeTree::AttributeDescriptor> attrs, bool limitWidth, ostream &c) {
+    Printer::attrLenSum = 0;
+    if (limitWidth == false){
+        for(int i = 0; i < attrs.size(); ++i)
+            if(attrs[i].relName.empty())
+                Printer::attrLenSum += attrs[i].attrName.size() + 3;
+            else
+                Printer::attrLenSum += attrs[i].relName.size() + 1 + attrs[i].attrName.size() + 3;
+        printBar(c);
+        c << "| ";
+        widths.clear();
+        for(int i = 0; i < attrs.size(); ++i) {
+            if(attrs[i].relName.empty()) {
+                c << attrs[i].attrName << " | ";
+                widths.push_back(attrs[i].attrName.size());
+            }
+            else {
+                c << (attrs[i].relName + "." + attrs[i].attrName) << " | ";
+                widths.push_back(attrs[i].relName.size() + 1 + attrs[i].attrName.size());
+            }
         }
-        else {
-            c << attrs[i].relName << "." << attrs[i].attrName << " | ";
-        }
+        c << endl;
+    }else{  // 宽度限定为widths[]
+        for (int i = 0; i < attrs.size(); ++i)
+            Printer::attrLenSum += widths[i] + 3;
+        printBar(c);
+        c << "| ";
+        for (int i = 0; i < attrs.size(); ++i)
+            if(attrs[i].relName.empty())
+                c << setw(widths[i]) << attrs[i].attrName << " | ";
+            else
+                c << setw(widths[i]) << (attrs[i].relName + "." + attrs[i].attrName) << " | ";
+        c << endl;
     }
-    c << endl;
-    for (int i = 0; i < 80; ++i)
-        c << "=";
-    c << endl;
+    printBar(c);
 }
 
 void Printer::printFooter(ostream &c) {
-    for (int i = 0; i < 80; ++i)
-        c << "=";
-    c << endl;
+    printBar(c);
 }
 
-void Printer::printAll(vector<RecordDescriptor> recordDescriptors, ostream& c) {
+void Printer::printAll(vector<RecordDescriptor> recordDescriptors, std::vector<AttributeTree::AttributeDescriptor> *attrs, ostream& c) {
     if(recordDescriptors.empty())
         return;
+
+    int attrCount = 0;
+    
+    // 填充widths 向量，widths[i]表示当前列i中所有项目中最长的那个的打印宽度
+    widths.clear();
+    if (attrs == NULL){
+        attrCount = recordDescriptors[0].attrNames.size();
+        for (int i = 0; i < attrCount; ++i)
+            widths.push_back(recordDescriptors[0].attrNames[i].size());
+    } else {
+        attrCount = attrs->size();
+        for (int i = 0; i < attrCount; ++i){
+            int width;
+            if (attrs->operator[](i).relName.empty())
+                width = attrs->operator[](i).attrName.size();
+            else
+                width = attrs->operator[](i).attrName.size() + 1 + attrs->operator[](i).relName.size();
+            widths.push_back(width);
+        }
+    }
+    for (int i = 0; i < attrCount; ++i)
+        for (const auto &recordDescriptor : recordDescriptors){
+            const auto &val = recordDescriptor.attrVals[i];
+            int &width = widths[i];
+            if (val.isNull)
+                width = max(width, 4);
+            else
+                switch (val.type){
+                    case T_INT:
+                        width = max(width, length(val.i));
+                        break;
+                    case T_FLOAT:
+                        width = max(width, length(val.f));
+                        break;
+                    case T_STRING:
+                        width = max(width, length(val.s));
+                        break;
+                    case T_DATE:
+                        width = max(width, length(val.s));
+                        break;
+                    case T_NONE:
+                        width = max(width, length(getHex(val.s)));
+                        break;
+                }
+        }
+
     // First Print Header
-    for(int i = 0; i < recordDescriptors[0].attrNames.size(); ++i)
-        c << recordDescriptors[0].attrNames[i] << " | ";
-    c << endl;
-    for (int i = 0; i < 80; ++i)
-        c << "=";
-    c << endl;
+    if (attrs == NULL) {
+        Printer::attrLenSum = 0;
+        for(int i = 0; i < attrCount; ++i)
+            Printer::attrLenSum += widths[i] + 3;
+        printBar(c);
+        c << "| ";
+        for(int i = 0; i < attrCount; ++i)
+            c << setw(widths[i]) << recordDescriptors[0].attrNames[i] << " | ";
+        c << endl;
+        printBar(c);
+    }else
+        printHeader(*attrs, true);
     for(const auto& recordDescriptor : recordDescriptors) {
-        for(int i = 0; i < recordDescriptor.attrVals.size(); ++i) {
+        c << "| ";
+        for(int i = 0; i < attrCount; ++i) {
             const auto& val = recordDescriptor.attrVals[i];
+            int width = widths[i];
             if(val.isNull)
-                c << "NULL" << " | ";
+                c << setw(width) << "NULL" << " | ";
             else {
                 switch(val.type) {
                     case T_INT :
-                        c << val.i << " | ";
+                        c << setw(width) << val.i << " | ";
                         break;
                     case T_FLOAT :
-                        c << val.f << " | ";
+                        c << setw(width) << val.f << " | ";
                         break;
                     case T_STRING :
-                        c << val.s << " | ";
+                        c << setw(width) << val.s << " | ";
                         break;
                     case T_DATE :
-                        c << val.s << " | ";
+                        c << setw(width) << val.s << " | ";
                         break;
                     case T_NONE :
-                        c << getHex(val.s) << " | ";
+                        c << setw(width) << getHex(val.s) << " | ";
                         break;
                 }
             }
         }
         c << endl;
     }
+    printFooter(c);
 }
 
-void Printer::printBody(std::vector<RecordDescriptor> recordDescriptors, ostream &c) {
-    for(const auto& recordDescriptor : recordDescriptors) {
-        for(int i = 0; i < recordDescriptor.attrVals.size(); ++i) {
-            const auto& val = recordDescriptor.attrVals[i];
-            if(val.isNull)
-                c << "NULL" << " | ";
-            else {
-                switch(val.type) {
-                    case T_INT :
-                        c << val.i << " | ";
-                        break;
-                    case T_FLOAT :
-                        c << val.f << " | ";
-                        break;
-                    case T_STRING :
-                        c << val.s << " | ";
-                        break;
-                    case T_DATE :
-                        c << val.s << " | ";
-                        break;
-                    case T_NONE :
-                        c << getHex(val.s) << " | ";
-                        break;
-                }
-            }
-        }
-        c << endl;
-    }
-}
-
-void Printer::printBody(RecordDescriptor recordDescriptor, ostream &c) {
-    for(int i = 0; i < recordDescriptor.attrVals.size(); ++i) {
-        const auto& val = recordDescriptor.attrVals[i];
-        if(val.isNull)
-            c << "NULL" << " | ";
-        else {
-            switch(val.type) {
-                case T_INT :
-                    c << val.i << " | ";
-                    break;
-                case T_FLOAT :
-                    c << val.f << " | ";
-                    break;
-                case T_STRING :
-                    c << val.s << " | ";
-                    break;
-                case T_DATE :
-                    c << val.s << " | ";
-                    break;
-                case T_NONE :
-                    c << getHex(val.s) << " | ";
-                    break;
-            }
-        }
-    }
-    c << endl;
-}
-
-void Printer::printBody(std::vector<double> vals, ostream &c) {
-    for(int i = 0; i < vals.size(); ++i)
-        c << vals[i] << " | ";
-    c << endl;
-}
-
-void Printer::printBody(AttrValue val, std::vector<double> vals, ostream &c) {
-    switch(val.type) {
-        case T_INT :
-            c << val.i << " | ";
-            break;
-        case T_FLOAT :
-            c << val.f << " | ";
-            break;
-        case T_STRING :
-            c << val.s << " | ";
-            break;
-        case T_DATE :
-            c << val.s << " | ";
-            break;
-        case T_NONE :
-            c << getHex(val.s) << " | ";
-            break;
-    }
-    for(int i = 0; i < vals.size(); ++i)
-        c << vals[i] << " | ";
-    c << endl;
+void Printer::printBar(ostream &c){
+    c << "+";
+    for (int i = 0; i < Printer::attrLenSum - 1; ++i)
+        c << "-";
+    c << "+" << endl;
 }

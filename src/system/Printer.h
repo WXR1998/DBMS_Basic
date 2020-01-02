@@ -11,15 +11,14 @@ class Printer {
 public:
     Printer() {}
     ~Printer(){}
-    static void printHeader(std::vector<AttributeTree::AttributeDescriptor> attrs, std::ostream& c = std::cout);
-    static void printBody(std::vector<RecordDescriptor> recordDescriptors, std::ostream &c = std::cout);
-    static void printBody(RecordDescriptor recordDescriptor, std::ostream &c = std::cout);
-    static void printBody(std::vector<double> vals, std::ostream &c = std::cout);
-    static void printBody(AttrValue val, std::vector<double> vals, std::ostream &c = std::cout);
-    static void printAll(std::vector<RecordDescriptor> recordDescriptors, std::ostream& c = std::cout);
+    static void printHeader(std::vector<AttributeTree::AttributeDescriptor> attrs, bool limitWidth = false, std::ostream& c = std::cout);
+    static void printAll(std::vector<RecordDescriptor> recordDescriptors, std::vector<AttributeTree::AttributeDescriptor> *attrs = NULL, std::ostream& c = std::cout);
     static void printFooter(std::ostream& c = std::cout);
-private:
+    static std::vector<int> widths;
 
+private:
+    static void printBar(std::ostream &c = std::cout);
+    static int attrLenSum;
 };
 
 
