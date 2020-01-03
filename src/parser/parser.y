@@ -40,6 +40,7 @@ class Tree;
     SetClauseTree *setClauseTree;
     OperatorTree *operatorTree;
     PrimarySetTree *primarySetTree;
+    AddPrimaryTree *addPrimaryTree;
 }
 
 
@@ -190,6 +191,7 @@ tbStmt:
         }
     | UPDATE tbName SET setClause whereClause
         {
+            // 这里不考虑WhereClause，因为update加上whereclause后就不能逐列修改了
             $$ = new UpdateTree(std::string($2), $4, $5); 
             Tree::setInstance($$);
             delete $2;
@@ -271,9 +273,10 @@ alterStmt:
         }
     | ALTER TABLE tbName ADD PRIMARY '(' columnList ')'
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new AddPrimaryTree($3, $7);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     | ALTER TABLE tbName DROP PRIMARY
         {

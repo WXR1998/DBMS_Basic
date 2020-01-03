@@ -179,8 +179,9 @@ union YYSTYPE
     SetClauseTree *setClauseTree;
     OperatorTree *operatorTree;
     PrimarySetTree *primarySetTree;
+    AddPrimaryTree *addPrimaryTree;
 
-#line 184 "y.tab.hpp" /* yacc.c:1909  */
+#line 185 "y.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

@@ -4,6 +4,7 @@
 #include <set>
 #include <cstddef>
 #include <cstdio>
+#include <algorithm>
 #include "SystemManager.h"
 #include "../record/FileScan.h"
 #include "DBHandle.h"
@@ -1542,4 +1543,125 @@ vector<RecordDescriptor> SystemManager::retrieveRecordsByIndex(string relName,
     }
     delete []dataAttrInfo;
     return output;
+}
+
+/*
+    给表relName添加一个主键，其主键项为attrs
+*/
+RETVAL SystemManager::addPrimaryKey(const char *relName, std::vector<std::string> attrs){
+    if (!hasRelation(relName)){
+        cerr << "[ERROR] Relation <" << relName << "> does not exist." << endl;
+        return RETVAL_ERR;
+    }
+    for (const auto &s : attrs)
+        if (!hasAttribute(relName, s.c_str())){
+            cerr << "[ERROR] Relation <" << relName << "> does not have attribute <" << s << ">." << endl;
+            return RETVAL_ERR;
+        }
+
+    // 检查表relName是否已有主键
+    for (int i = 0, limi = dbHandle.relations.size(); i < limi; ++i)
+        if (strcmp(relName, dbHandle.relations[i].relName) == 0)
+            if (dbHandle.relations[i].primaryCount > 0){
+                cerr << "[ERROR] Relation <" << relName << "> already has a primary key." << endl;
+                return RETVAL_ERR;
+            }
+
+    // 检查表relName的所有需要添加主键的列中是否有重复元素和NULL值
+    int rc, primaryCount = attrs.size(), recordCount = 0;
+    auto records = retrieveRecords(string(relName), rc);
+    DataAttrInfo *dataAttrInfo;
+    int attrCount;
+    RETURNIF(fillAttributesFromTable(relName, attrCount, dataAttrInfo));
+    vector<int> primaryKeyIndexes;  // 主键在原表中attr表中的下标
+    for (const auto &s : attrs)
+        for (int i = 0; i < attrCount; ++i)
+            if (strcmp(s.c_str(), dataAttrInfo[i].attrName) == 0){
+                primaryKeyIndexes.push_back(i);
+                break;
+            }
+
+    // 检查NULL
+    for (const auto &record: records)
+        for (const auto &idx: primaryKeyIndexes)
+            if (record.second.attrVals[idx].isNull){
+                cerr << "[ERROR] There is at least one NULL value in given attributes. Primary key requires NOT NULL." << endl;
+                return RETVAL_ERR;
+            }
+
+    // 检查元素重复
+    vector<vector<AttrValue> > recordValues;    // 二维数组，第一维长度等于records数量，第二维长度等于attrs长度（即主键数）
+    for (const auto &record: records){
+        recordValues.push_back(vector<AttrValue>());
+        for (int j = 0; j < primaryCount; ++j)
+            recordValues[recordCount].push_back(record.second.attrVals[primaryKeyIndexes[j]]);
+        recordCount++;
+    }
+    sort(recordValues.begin(), recordValues.end());
+    for (int i = 1; i < recordCount; ++i)
+        if (recordValues[i-1] == recordValues[i]){
+            cerr << "[ERROR] There are duplicated values in given attributes. Primary key requires unique values." << endl;
+            return RETVAL_ERR;
+        }
+
+    // 合法，可添加主键
+
+    // 修改relcat
+    RecordID relRID;
+    DataRelInfo relData;
+    for (int i = 0, limi = dbHandle.relations.size(); i < limi; ++i)
+        if (strcmp(dbHandle.relations[i].relName, relName) == 0){
+            relRID = dbHandle.relationRecordIDs[i];
+            relData = dbHandle.relations[i];
+            break;
+        }
+    relData.primaryCount = primaryCount;
+    SingleFileHandler *fileHandle = recordManager->openFile(kDefaultRelCatName);
+    Record relRecord(relRID, (char*)(&relData), sizeof (DataRelInfo));
+    fileHandle->updateRecord(relRecord);
+    recordManager->closeFile();
+
+    // 修改attrcat
+    for (int i = 0; i < primaryCount; ++i){
+        int idx = -1;
+        for (int j = 0, limj = dbHandle.attributes.size(); j < limj; ++j)
+            if (strcmp(dbHandle.attributes[j].relName, relName) == 0 && strcmp(dbHandle.attributes[j].attrName, attrs[i].c_str()) == 0){
+                idx = j;
+                break;
+            }
+        if (idx == -1){
+            cerr << "[ERROR] Attribute <" << attrs[i] << "> not found in relation." << endl;
+            return RETVAL_ERR;
+        }
+        RecordID attrRID = dbHandle.attributeRecordIDs[idx];
+        DataAttrInfo attrData = dbHandle.attributes[idx];
+        attrData.isPrimaryKey = i + 1;
+        attrData.notNull = 1;
+        SingleFileHandler *fileHandle = recordManager->openFile(kDefaultAttrCatName);
+        Record attrRecord(attrRID, (char*)(&attrData), sizeof (DataAttrInfo));
+        fileHandle->updateRecord(attrRecord);
+        recordManager->closeFile();
+    }
+
+    dbHandle.refreshHandle();
+    return RETVAL_OK;
+}
+
+bool operator < (const vector<AttrValue> &a, const vector<AttrValue> &b) {
+    if (a.size() != b.size()) return false;
+    int len = a.size();
+    for (int i = 0; i < len; ++i){
+        if (a[i] < b[i]) return true;
+        if (a[i] > b[i]) return false;
+    }
+    // a == b
+    return false;
+}
+bool operator == (const vector<AttrValue> &a, const vector<AttrValue> &b) {
+    if (a.size() != b.size()) return false;
+    int len = a.size();
+    for (int i = 0; i < len; ++i)
+        if (a[i] != b[i]) return false;
+    // a == b
+    return true;
 }

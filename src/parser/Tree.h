@@ -32,6 +32,7 @@ class TypeTree;
 class SetClauseTree;
 class OperatorTree;
 class PrimarySetTree;
+class AddPrimaryTree;
 
 class Tree {
 public:
@@ -417,6 +418,16 @@ public:
     virtual ~SetClauseTree();
     void addClause(const char *colName, ConstValueTree *constValue);
     std::vector<std::pair<std::string, ConstValueTree*> > clauses;
+};
+
+class AddPrimaryTree : public Tree {
+public:
+    AddPrimaryTree(const char *relName, AttributesTree* attrs);
+    virtual ~AddPrimaryTree();
+    void visit();
+private:
+    std::string relName;
+    std::vector<std::string> attrs;
 };
 
 #endif //DATABASE_TREE_H

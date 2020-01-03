@@ -123,8 +123,10 @@ void UpdateTree::visit() {
         AttributeTree::AttributeDescriptor attr = (AttributeTree::AttributeDescriptor){relationName, t.first};
         AttrValue val = t.second->getDescriptor();
         vector<ComparisonTree::ComparisonDescriptor> coms;
-        if (whereClause != NULL)
-            coms = whereClause->getComparision();
+        if (whereClause != NULL){
+            cerr << "[WARNING] Where-clause is not supported and will be ignored." << endl;
+            // coms = whereClause->getComparision();
+        }
         SystemManager::instance()->Update(relationName, attr, val, coms);
     }
 }
@@ -569,6 +571,8 @@ bool AttrValue::operator == (const AttrValue &val) const {
         return f1 == f2;
     } else if (type == AttrType::T_STRING && val.type == AttrType::T_STRING) {
         return this->s == val.s;
+    } else if (type == AttrType::T_DATE && val.type == AttrType::T_DATE) { 
+        return this->s == val.s;
     } else {
         // TODO cannot compare
     }
@@ -584,6 +588,8 @@ bool AttrValue::operator != (const AttrValue &val) const {
         float f2 = val.type == AttrType::T_INT ? val.i : val.f;
         return f1 != f2;
     } else if (type == AttrType::T_STRING && val.type == AttrType::T_STRING) {
+        return this->s != val.s;
+    } else if (type == AttrType::T_DATE && val.type == AttrType::T_DATE) { 
         return this->s != val.s;
     } else {
         // TODO cannot compare
@@ -601,6 +607,8 @@ bool AttrValue::operator >= (const AttrValue &val) const {
         return f1 >= f2;
     } else if (type == AttrType::T_STRING && val.type == AttrType::T_STRING) {
         return this->s >= val.s;
+    } else if (type == AttrType::T_DATE && val.type == AttrType::T_DATE) { 
+        return this->s >= val.s;
     } else {
         // TODO cannot compare
     }
@@ -616,6 +624,8 @@ bool AttrValue::operator <= (const AttrValue &val) const {
         float f2 = val.type == AttrType::T_INT ? val.i : val.f;
         return f1 <= f2;
     } else if (type == AttrType::T_STRING && val.type == AttrType::T_STRING) {
+        return this->s <= val.s;
+    } else if (type == AttrType::T_DATE && val.type == AttrType::T_DATE) { 
         return this->s <= val.s;
     } else {
         // TODO cannot compare
@@ -633,6 +643,8 @@ bool AttrValue::operator > (const AttrValue &val) const {
         return f1 > f2;
     } else if (type == AttrType::T_STRING && val.type == AttrType::T_STRING) {
         return this->s > val.s;
+    } else if (type == AttrType::T_DATE && val.type == AttrType::T_DATE) { 
+        return this->s > val.s;
     } else {
         // TODO cannot compare
     }
@@ -648,6 +660,8 @@ bool AttrValue::operator < (const AttrValue &val) const {
         float f2 = val.type == AttrType::T_INT ? val.i : val.f;
         return f1 < f2;
     } else if (type == AttrType::T_STRING && val.type == AttrType::T_STRING) {
+        return this->s < val.s;
+    } else if (type == AttrType::T_DATE && val.type == AttrType::T_DATE) { 
         return this->s < val.s;
     } else {
         // TODO cannot compare
@@ -705,3 +719,14 @@ PrimarySetTree::PrimarySetTree(AttributesTree *attrs):attrs(attrs) {
     isPrimarySetTree = true;
 }
 PrimarySetTree::~PrimarySetTree(){}
+
+AddPrimaryTree::AddPrimaryTree(const char *relName, AttributesTree* attrs){
+    this->attrs.clear();
+    for (const auto &s: attrs->getDescriptors())
+        this->attrs.push_back(s.attrName);
+    this->relName = string(relName);
+}
+AddPrimaryTree::~AddPrimaryTree(){}
+void AddPrimaryTree::visit(){
+    SystemManager::instance()->addPrimaryKey(relName.c_str(), attrs);
+}

@@ -27,6 +27,9 @@ public:
     RETVAL dropTable(const char *relName);
     RETVAL createIndex(std::string relName, AttributeTree::AttributeDescriptor attr, std::string idxName);
     RETVAL dropIndex(std::string relName, std::string idxName);
+
+    RETVAL addPrimaryKey(const char *relName, std::vector<std::string> attrs);
+
     RETVAL load(const char *relName, const char *fileName);
     RETVAL help();
     std::vector<std::vector<string> > qHelp();
@@ -119,6 +122,11 @@ private:
         vector<string> elems;
         split(s, delim, elems);
         return elems;
-    }};
+    }
+};
+
+
+bool operator < (const vector<AttrValue> &a, const vector<AttrValue> &b);
+bool operator == (const vector<AttrValue> &a, const vector<AttrValue> &b);
 
 #endif //DATABASE_SYSTEMMANAGER_H
