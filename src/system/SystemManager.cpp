@@ -988,52 +988,55 @@ RETVAL SystemManager::Update(std::string relName,
     attrs.push_back(attr);
     rels.push_back(relName);
     if (!checkRelations(rels)) {
+        cerr << "[ERROR] Relation does not exist." << endl;
         return RETVAL_ERR;
     }
     if (!checkAttributes(attrs, rels)) {
+        cerr << "[ERROR] Relation <" << relName << "> does not have attribute <" << attr.attrName << ">." << endl;
         return RETVAL_ERR;
     }
     if (!checkComparison(coms, relName)) {
+        cerr << "[ERROR] Comparision invalid." << endl;
         return RETVAL_ERR;
     }
 
     RETVAL rc;
     auto records = retrieveRecords(relName, rc);
     if(rc != RETVAL_OK) {
-        printf("Inner Error!");
+        cerr << "[ERROR] Failed on retriving records." << endl;
         return RETVAL_ERR;
     }
 
-    // Check Out Key
-    vector<string> aaa = split(attr.attrName, '_');
+    // // Check Out Key
+    // vector<string> aaa = split(attr.attrName, '_');
 
-    if(aaa.size() == 2 && !aaa[0].empty() && !aaa[1].empty()) {
-        vector<string> rel_tmp;
-        rel_tmp.push_back(aaa[0]);
-        vector<AttributeTree::AttributeDescriptor> a_tmp;
-        if(!checkRelations(rel_tmp)) {
-            printf("Invalid Relation Name for Update\n");
-            return RETVAL_OK;
-        }
-        AttributeTree::AttributeDescriptor ad(aaa[0], aaa[1]);
-        a_tmp.push_back(ad);
-        if(!checkAttributes(a_tmp, rel_tmp)) {
-            printf("Invalid Attribute Name for Update\n");
-            return RETVAL_OK;
-        }
-        vector<ComparisonTree::ComparisonDescriptor> coms_tmp;
-        ComparisonTree::ComparisonDescriptor c_tmp;
-        c_tmp.isAttrCmp = false;
-        c_tmp.op = T_EQ;
-        c_tmp.attr = ad;
-        c_tmp.val = val;
-        coms_tmp.push_back(c_tmp);
-        auto records_tmp = select(a_tmp, rel_tmp, coms_tmp, rc);
-        if(records_tmp.empty()) {
-            cerr << "No Such Value!" << endl;
-            return RETVAL_ERR;
-        }
-    }
+    // if(aaa.size() == 2 && !aaa[0].empty() && !aaa[1].empty()) {
+    //     vector<string> rel_tmp;
+    //     rel_tmp.push_back(aaa[0]);
+    //     vector<AttributeTree::AttributeDescriptor> a_tmp;
+    //     if(!checkRelations(rel_tmp)) {
+    //         printf("Invalid Relation Name for Update\n");
+    //         return RETVAL_OK;
+    //     }
+    //     AttributeTree::AttributeDescriptor ad(aaa[0], aaa[1]);
+    //     a_tmp.push_back(ad);
+    //     if(!checkAttributes(a_tmp, rel_tmp)) {
+    //         printf("Invalid Attribute Name for Update\n");
+    //         return RETVAL_OK;
+    //     }
+    //     vector<ComparisonTree::ComparisonDescriptor> coms_tmp;
+    //     ComparisonTree::ComparisonDescriptor c_tmp;
+    //     c_tmp.isAttrCmp = false;
+    //     c_tmp.op = T_EQ;
+    //     c_tmp.attr = ad;
+    //     c_tmp.val = val;
+    //     coms_tmp.push_back(c_tmp);
+    //     auto records_tmp = select(a_tmp, rel_tmp, coms_tmp, rc);
+    //     if(records_tmp.empty()) {
+    //         cerr << "No Such Value!" << endl;
+    //         return RETVAL_ERR;
+    //     }
+    // }
 
 
     // Check Primary Key
@@ -1056,7 +1059,7 @@ RETVAL SystemManager::Update(std::string relName,
         if(dataAttrInfo[i].attrName == attr.attrName) {
             AttrType t = dataAttrInfo[i].attrType;
             if(t != val.type) {
-                cerr << "Incompatable Type!" << endl;
+                cerr << "[ERROR] Attribute's types mismatch." << endl;
                 return RETVAL_ERR;
             }
         }
@@ -1066,9 +1069,11 @@ RETVAL SystemManager::Update(std::string relName,
     RecordID recordID;
     SingleFileHandler *fileHandle;
     fileHandle = FileHandler::instance()->openFile(relName.c_str());
+
+
     for (auto it = begin(records); it != end(records); ++it) {
-        if (isValid(coms, it->second, relName)) {
-            if(!isPrimaryKey) {
+        if (isValid(coms, it->second, relName)) {   // 满足coms约束，这一行需要更改！
+            if(!isPrimaryKey) {     // 如果不是主键，则不需要检查完整性，直接在这里改完就行了
                 // Update Index
                 for(int i = 0; i < attrCount; ++i) {
                     if(dataAttrInfo[i].indexNo != 0 && dataAttrInfo[i].attrName == attr.attrName) {
@@ -1089,7 +1094,7 @@ RETVAL SystemManager::Update(std::string relName,
                 Record record;
                 rc = it->second.toRecord(it->first, record);
                 if(rc != RETVAL_OK) {
-                    printf("Inner Error!");
+                    cerr << "[ERROR] Inner error in toRecord()." << endl;
                     delete[] dataAttrInfo;
                     return RETVAL_ERR;
                 }
@@ -1111,28 +1116,21 @@ RETVAL SystemManager::Update(std::string relName,
                     }
                 }
             }
-            else {
+            else {  // 如果该列是主键中的一列，则把这一列的信息收集起来放到后面处理
                 recordID = it->first;
                 validRecords.push_back(&(it->second));
             }
         }
     }
-    if(validRecords.empty())
-        return 0;
-    if(isPrimaryKey) {
+    if(validRecords.empty());   // 如果不是主键中的一列，可以直接返回结果
+    else if(isPrimaryKey) {
         if(validRecords.size() > 1) {
-            cerr << "Primary Key Duplicate!" << endl;
+            cerr << "[ERROR] Primary Key Duplicate!" << endl;
             delete[] dataAttrInfo;
             return RETVAL_ERR;
         }
         // Size = 1
-        void* data;
-        if(val.type == T_INT)
-            data = (void*)&(val.i);
-        else if(val.type == T_FLOAT)
-            data = (void*)&(val.f);
-        else
-            data = (void*)(val.s.c_str());
+        void* data = val.getElementPointer();
 
         FileScan fileScan;
         fileScan.openScan(*fileHandle,
@@ -1143,7 +1141,7 @@ RETVAL SystemManager::Update(std::string relName,
         Record record;
         rc = fileScan.getNextRec(record);
         if(rc != RETVAL_EOF) {
-            cerr << "Primary Key Duplicate!" << endl;
+            cerr << "[ERROR] Primary Key Duplicate!" << endl;
             delete[] dataAttrInfo;
             return RETVAL_ERR;
         }
@@ -1167,7 +1165,7 @@ RETVAL SystemManager::Update(std::string relName,
         validRecords[0]->assign(attr.attrName, val);
         rc = validRecords[0]->toRecord(recordID, record);
         if(rc != RETVAL_OK) {
-            printf("Inner Error!");
+            cerr << "[ERROR] Inner error in toRecord()." << endl;
             delete[] dataAttrInfo;
             return RETVAL_ERR;
         }
@@ -1191,7 +1189,7 @@ RETVAL SystemManager::Update(std::string relName,
 
     }
     delete[] dataAttrInfo;
-    return 0;
+    return RETVAL_OK;
 }
 
 RETVAL SystemManager::Delete(std::string relName, std::vector<ComparisonTree::ComparisonDescriptor> coms) {
@@ -1364,8 +1362,11 @@ bool SystemManager::checkComparisons(vector<SystemManager::Comparison> &coms, ve
     return true;
 }
 
-// Only check one relation's validation
-// Only check type including NULL excluding Primary Key
+/*
+    检查relation表中，record是否满足条件coms
+    只检查单表的coms
+    包含NULL的判断，但不含主键的判断
+*/
 bool SystemManager::isValid(vector<SystemManager::Comparison> &coms, RecordDescriptor &record, const string &relation) {
     for (auto const &com : coms)
         if (!com.isAttrCmp && com.attr.relName == relation) {
@@ -1391,9 +1392,12 @@ bool SystemManager::isValid(vector<SystemManager::Comparison> &coms, RecordDescr
             } else if (value.type == AttrType::T_STRING && com.val.type == AttrType::T_STRING) {
                 if (!compare(value.s, com.val.s, com.op))
                     return false;
+            } else if (value.type == AttrType::T_DATE && com.val.type == AttrType::T_DATE) {
+                if (!compare(value.s, com.val.s, com.op))
+                    return false;
             } else {
-                printf("Incompatible type!\n");
-                exit(0);
+                cerr << "[ERROR] Incompatible types." << endl;
+                return false;
             }
         }
     // TODO: isAttrCmp = true

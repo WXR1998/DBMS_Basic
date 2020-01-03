@@ -119,13 +119,14 @@ UpdateTree::~UpdateTree() {
 }
 
 void UpdateTree::visit() {
-    // TODO MODIFY
-    // 增添了SetClause的效果，本来只需更改一个，现在需要更改多个
-
-    // AttributeTree::AttributeDescriptor attr = attribute->getDescriptor();
-    // AttrValue val = constValue->getDescriptor();
-    // vector<ComparisonTree::ComparisonDescriptor> coms = whereClause->getComparision();
-    // SystemManager::instance()->Update(relationName, attr, val, coms);
+    for (auto &t: setClause->clauses){
+        AttributeTree::AttributeDescriptor attr = (AttributeTree::AttributeDescriptor){relationName, t.first};
+        AttrValue val = t.second->getDescriptor();
+        vector<ComparisonTree::ComparisonDescriptor> coms;
+        if (whereClause != NULL)
+            coms = whereClause->getComparision();
+        SystemManager::instance()->Update(relationName, attr, val, coms);
+    }
 }
 
 /* DeleteTree */

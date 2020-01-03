@@ -46,6 +46,7 @@ public:
     RETVAL Insert(std::string relName, std::vector<std::string>* attrs,
               std::vector<AttrValue> vals);
 
+    // 使得表relName中满足coms约束条件的attr列变为val
     RETVAL Update(std::string relName,
               AttributeTree::AttributeDescriptor attr,
               AttrValue val,
