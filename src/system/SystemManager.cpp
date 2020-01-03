@@ -512,7 +512,7 @@ RETVAL SystemManager::closeDB() {
 
 RETVAL SystemManager::createTable(const char *relName, int attrCount, AttrInfo *attributes) {
     if(!hasOpenDB) {
-        cerr << "[ERROR] Please Open DB first!" << endl;
+        cerr << "[ERROR] Please open DB first!" << endl;
         return RETVAL_ERR;
     }
     if (hasRelation(relName)){
@@ -531,6 +531,17 @@ RETVAL SystemManager::dropTable(const char *relName) {
     }
 
     // 删除一个表之前，要先把它的索引、外键都删除
+    vector<string> fkNames;
+    for (const auto &fk: dbHandle.foreignKeys){
+        if (strcmp(relName, fk.masRelName) == 0){
+            cerr << "[ERROR] This table is the master table of a foreign key. Please drop that foreign key first." << endl;
+            return RETVAL_ERR;
+        }
+        if (strcmp(relName, fk.serRelName) == 0)
+            fkNames.push_back(string(fk.fkName));
+    }
+    for (const auto &s: fkNames)
+        RETURNIF(dropForeignKey(relName, s.c_str()));
 
     // 删除索引
     vector<const char*> indexNames;
@@ -539,8 +550,6 @@ RETVAL SystemManager::dropTable(const char *relName) {
             indexNames.push_back(dbHandle.indexes[i].idxName);
     for (int i = 0, lim = indexNames.size(); i < lim; ++i)
         dropIndex(relName, indexNames[i]);
-
-    // TODO 删除所有外键
 
     RETURNIF(dbHandle.dropTable(relName));
     return RETVAL_OK;
@@ -602,6 +611,7 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName, string idx
     SingleFileHandler* fileHandle = recordManager->openFile(kDefaultAttrCatName);
     Record record(attrRecordID, (char*)(&attrData), sizeof(DataAttrInfo));
     fileHandle->updateRecord(record);
+    recordManager->closeFile();
     // Update IndexCount in relcat
     fileHandle = recordManager->openFile(kDefaultRelCatName);
     Record record1(relRecordID, (char*)(&relInfo), sizeof(DataRelInfo));
@@ -615,14 +625,13 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName, string idx
     strcpy(dataIdxInfo.attrName, attrName.attrName.c_str());
     strcpy(dataIdxInfo.relName, relName.c_str());
     fileHandle->insertRecord((const char*)&dataIdxInfo, rid);
+    recordManager->closeFile();
 
     dbHandle.refreshHandle();
 
     // Build Up Index
-    RETURNIF(IndexHandler::instance()->CreateIndex(relName.c_str(),
-                                                    indexCount,
-                                                    attrData.attrType,
-                                                    attrData.attrLength));
+    RETURNIF(IndexHandler::instance()->CreateIndex(relName.c_str(), indexCount, attrData.attrType, attrData.attrLength));
+
     SingleIndexHandler indexHandle;
     // 把当前所有行的对应列的值放进B+树
     RETVAL rc;
@@ -703,7 +712,7 @@ RETVAL SystemManager::load(const char *relName, const char *fileName) {
 
 RETVAL SystemManager::help() {
     if(!hasOpenDB) {
-        cerr << "[ERROR] Please Open DB first." << endl;
+        cerr << "[ERROR] Please open DB first." << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.help());
@@ -717,7 +726,7 @@ std::vector<std::vector<string>> SystemManager::qHelp()
 
 RETVAL SystemManager::help(const char *relName) {
     if(!hasOpenDB) {
-        cerr << "[ERROR] Please Open DB first." << endl;
+        cerr << "[ERROR] Please open DB first." << endl;
         return RETVAL_ERR;
     }
     RETURNIF(dbHandle.help(relName));
@@ -893,14 +902,9 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
         descriptor = RecordDescriptor::createRecordDescriptor(relName, vals, rc);
     else
         descriptor = RecordDescriptor::createRecordDescriptor(relName, *attrs, vals, rc);
-    
     if(rc != RETVAL_OK) return rc;
-    SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
-    Record record;
-    rc = descriptor.toRecord(RecordID(), record);
-    if(rc != RETVAL_OK) return RETVAL_ERR;
 
-    // 检查是否已经存在主键
+    // 检查是否存在主键
     DataAttrInfo *dataAttrInfo;
     vector<int> primaryKey;         // 主键元素在dataAttrInfo中的下标
     int primaryCount;
@@ -913,6 +917,7 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
             break;
         }
 
+    // 这里实际上可以调用select()
     if (primaryCount > 0){  // 存在主键
         for (int i = 1; i <= primaryCount; ++i)
             for (int j = 0; j < attrCount; ++j)
@@ -957,6 +962,41 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
     }
     // 主键完整性检查完毕
 
+    // 检查外键。如果当前表中存在attr是某几个外键的一部分
+    vector <DataFkInfo*> foreignKeys;   // 当前表作为从表的外键列表
+    for (auto &fk: dbHandle.foreignKeys)
+        if (strcmp(relName.c_str(), fk.serRelName) == 0)
+            foreignKeys.push_back(&fk);
+    for (auto &fk: foreignKeys){
+        auto masRelName = fk->masRelName;
+        auto serRelName = relName;
+        auto fkAttrCount = fk->attrCount;
+        vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+        if (fkAttrCount >= 1){
+            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+        }
+        if (fkAttrCount >= 2){
+            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+        }
+        if (fkAttrCount >= 3){
+            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+        }
+        // 对于这个外键，要检查对应的主表中是否存在值为xxx的entry
+        auto record = descriptor.filteredByAttributeName(serAttrs, false);
+        if (!existsRecord(masRelName, masAttrs, record.attrVals)){
+            cerr << "[ERROR] Insertion will damage foreign-key data integrity constraints." << endl;
+            return RETVAL_ERR;
+        }
+    }
+    // 外键完整性检查完毕
+
+    SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
+    Record record;
+    rc = descriptor.toRecord(RecordID(), record);
+    if(rc != RETVAL_OK) return RETVAL_ERR;
     RecordID rid;
     fileHandle->insertRecord(record.getData(), rid);
 
@@ -979,9 +1019,9 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
 }
 
 RETVAL SystemManager::Update(std::string relName,
-                         AttributeTree::AttributeDescriptor attr,
-                         AttrValue val,
-                         std::vector<ComparisonTree::ComparisonDescriptor> coms) {
+                        AttributeTree::AttributeDescriptor attr,
+                        AttrValue val,
+                        std::vector<ComparisonTree::ComparisonDescriptor> coms) {       // 这里的coms实际上是空的，没有实现维护Update前后数据完整性的feature
     vector<AttributeTree::AttributeDescriptor> attrs;
     vector<string> rels;
     attrs.push_back(attr);
@@ -1005,38 +1045,6 @@ RETVAL SystemManager::Update(std::string relName,
         cerr << "[ERROR] Failed on retriving records." << endl;
         return RETVAL_ERR;
     }
-
-    // // Check Out Key
-    // vector<string> aaa = split(attr.attrName, '_');
-
-    // if(aaa.size() == 2 && !aaa[0].empty() && !aaa[1].empty()) {
-    //     vector<string> rel_tmp;
-    //     rel_tmp.push_back(aaa[0]);
-    //     vector<AttributeTree::AttributeDescriptor> a_tmp;
-    //     if(!checkRelations(rel_tmp)) {
-    //         printf("Invalid Relation Name for Update\n");
-    //         return RETVAL_OK;
-    //     }
-    //     AttributeTree::AttributeDescriptor ad(aaa[0], aaa[1]);
-    //     a_tmp.push_back(ad);
-    //     if(!checkAttributes(a_tmp, rel_tmp)) {
-    //         printf("Invalid Attribute Name for Update\n");
-    //         return RETVAL_OK;
-    //     }
-    //     vector<ComparisonTree::ComparisonDescriptor> coms_tmp;
-    //     ComparisonTree::ComparisonDescriptor c_tmp;
-    //     c_tmp.isAttrCmp = false;
-    //     c_tmp.op = T_EQ;
-    //     c_tmp.attr = ad;
-    //     c_tmp.val = val;
-    //     coms_tmp.push_back(c_tmp);
-    //     auto records_tmp = select(a_tmp, rel_tmp, coms_tmp, rc);
-    //     if(records_tmp.empty()) {
-    //         cerr << "No Such Value!" << endl;
-    //         return RETVAL_ERR;
-    //     }
-    // }
-
 
     // Check Primary Key
     int attrCount = 0;
@@ -1067,8 +1075,14 @@ RETVAL SystemManager::Update(std::string relName,
     vector<RecordDescriptor *> validRecords;
     RecordID recordID;
     SingleFileHandler *fileHandle;
-    fileHandle = FileHandler::instance()->openFile(relName.c_str());
 
+    vector <DataFkInfo*> fkAsMas, fkAsSer;
+    for (auto &fk: dbHandle.foreignKeys){
+        if (strcmp(relName.c_str(), fk.serRelName) == 0)
+            fkAsSer.push_back(&fk);
+        if (strcmp(relName.c_str(), fk.masRelName) == 0)
+            fkAsMas.push_back(&fk);
+    }
 
     for (auto it = begin(records); it != end(records); ++it) {
         if (isValid(coms, it->second, relName)) {   // 满足coms约束，这一行需要更改！
@@ -1083,13 +1097,67 @@ RETVAL SystemManager::Update(std::string relName,
                         data = (char*)v.getElementPointer();
                         SingleIndexHandler indexHandle;
                         RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
-                                                                     dataAttrInfo[i].indexNo,
-                                                                     indexHandle));
+                                                                    dataAttrInfo[i].indexNo,
+                                                                    indexHandle));
                         indexHandle.DeleteEntry(data, it->first);
+                    }
+                }
+
+                for (auto &fk: fkAsMas){
+                    auto masRelName = fk->masRelName;
+                    auto serRelName = fk->serRelName;
+                    auto fkAttrCount = fk->attrCount;
+                    vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+                    if (fkAttrCount >= 1){
+                        masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+                        serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+                    }
+                    if (fkAttrCount >= 2){
+                        masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+                        serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+                    }
+                    if (fkAttrCount >= 3){
+                        masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+                        serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+                    }
+
+                    auto record = it->second.filteredByAttributeName(masAttrs, false);
+                    auto record_modify = it->second;
+                    record_modify.assign(attr.attrName, val);
+                    record_modify = record_modify.filteredByAttributeName(masAttrs, false);
+                    if (existsRecord(serRelName, serAttrs, record.attrVals) && !existsRecord(serRelName, serAttrs, record_modify.attrVals)){
+                        cerr << "[ERROR] Update will damage foreign-key data integrity constraints." << endl;
+                        return RETVAL_ERR;
                     }
                 }
                 // Actually Update record
                 it->second.assign(attr.attrName, val);
+
+                for (auto &fk: fkAsSer){
+                    auto masRelName = fk->masRelName;
+                    auto serRelName = fk->serRelName;
+                    auto fkAttrCount = fk->attrCount;
+                    vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+                    if (fkAttrCount >= 1){
+                        masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+                        serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+                    }
+                    if (fkAttrCount >= 2){
+                        masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+                        serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+                    }
+                    if (fkAttrCount >= 3){
+                        masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+                        serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+                    }
+
+                    auto record = it->second.filteredByAttributeName(serAttrs, false);
+                    if (!existsRecord(masRelName, masAttrs, record.attrVals)){
+                        cerr << "[ERROR] Update will damage foreign-key data integrity constraints." << endl;
+                        return RETVAL_ERR;
+                    }
+                }
+
                 Record record;
                 rc = it->second.toRecord(it->first, record);
                 if(rc != RETVAL_OK) {
@@ -1097,6 +1165,7 @@ RETVAL SystemManager::Update(std::string relName,
                     delete[] dataAttrInfo;
                     return RETVAL_ERR;
                 }
+                fileHandle = FileHandler::instance()->openFile(relName.c_str());
                 fileHandle->updateRecord(record);
 
                 // Insert New Index
@@ -1109,8 +1178,8 @@ RETVAL SystemManager::Update(std::string relName,
                         data = (char*)v.getElementPointer();
                         SingleIndexHandler indexHandle;
                         RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
-                                                                     dataAttrInfo[i].indexNo,
-                                                                     indexHandle));
+                                                                    dataAttrInfo[i].indexNo,
+                                                                    indexHandle));
                         indexHandle.InsertEntry(data, it->first);
                     }
                 }
@@ -1132,11 +1201,12 @@ RETVAL SystemManager::Update(std::string relName,
         void* data = val.getElementPointer();
 
         FileScan fileScan;
+        fileHandle = FileHandler::instance()->openFile(relName.c_str());
         fileScan.openScan(*fileHandle,
-                          primaryAttrInfo.attrType,
-                          primaryAttrInfo.attrLength,
-                          primaryAttrInfo.offset,
-                          CmpOP::T_EQ, data);
+                        primaryAttrInfo.attrType,
+                        primaryAttrInfo.attrLength,
+                        primaryAttrInfo.offset,
+                        CmpOP::T_EQ, data);
         Record record;
         rc = fileScan.getNextRec(record);
         if(rc != RETVAL_EOF) {
@@ -1153,21 +1223,77 @@ RETVAL SystemManager::Update(std::string relName,
                     continue;
                 data = (char*)v.getElementPointer();
                 SingleIndexHandler indexHandle;
-                RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
-                                                             dataAttrInfo[i].indexNo,
-                                                             indexHandle));
+                RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(), dataAttrInfo[i].indexNo, indexHandle));
                 indexHandle.DeleteEntry(data, recordID);
+            }
+        }
+
+        // Check
+        for (auto &fk: fkAsMas){
+            auto masRelName = fk->masRelName;
+            auto serRelName = fk->serRelName;
+            auto fkAttrCount = fk->attrCount;
+            vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+            if (fkAttrCount >= 1){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+            }
+            if (fkAttrCount >= 2){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+            }
+            if (fkAttrCount >= 3){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+            }
+
+            auto record = validRecords[0]->filteredByAttributeName(masAttrs, false);
+            auto record_modify = *(validRecords[0]);
+            record_modify.assign(attr.attrName, val);
+            record_modify = record_modify.filteredByAttributeName(masAttrs, false);
+            if (existsRecord(serRelName, serAttrs, record.attrVals) && !existsRecord(serRelName, serAttrs, record_modify.attrVals)){
+                cerr << "[ERROR] Update will damage foreign-key data integrity constraints." << endl;
+                return RETVAL_ERR;
             }
         }
 
         // Assign
         validRecords[0]->assign(attr.attrName, val);
+
+        // Check
+        for (auto &fk: fkAsSer){
+            auto masRelName = fk->masRelName;
+            auto serRelName = fk->serRelName;
+            auto fkAttrCount = fk->attrCount;
+            vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+            if (fkAttrCount >= 1){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+            }
+            if (fkAttrCount >= 2){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+            }
+            if (fkAttrCount >= 3){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+            }
+
+            auto record = validRecords[0]->filteredByAttributeName(serAttrs, false);
+            if (!existsRecord(masRelName, masAttrs, record.attrVals)){
+                cerr << "[ERROR] Update will damage foreign-key data integrity constraints." << endl;
+                return RETVAL_ERR;
+            }
+        }
+
+        // Assign
         rc = validRecords[0]->toRecord(recordID, record);
         if(rc != RETVAL_OK) {
             cerr << "[ERROR] Inner error in toRecord()." << endl;
             delete[] dataAttrInfo;
             return RETVAL_ERR;
         }
+        fileHandle = FileHandler::instance()->openFile(relName.c_str());
         fileHandle->updateRecord(record);
 
         // Update Index
@@ -1179,9 +1305,7 @@ RETVAL SystemManager::Update(std::string relName,
                     continue;
                 data = (char*)v.getElementPointer();
                 SingleIndexHandler indexHandle;
-                RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
-                                                             dataAttrInfo[i].indexNo,
-                                                             indexHandle));
+                RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(), dataAttrInfo[i].indexNo, indexHandle));
                 indexHandle.DeleteEntry(data, recordID);
             }
         }
@@ -1193,16 +1317,19 @@ RETVAL SystemManager::Update(std::string relName,
 
 RETVAL SystemManager::Delete(std::string relName, std::vector<ComparisonTree::ComparisonDescriptor> coms) {
     // Check relation
-    if (!hasRelation(relName.c_str())) {
-        printf("No such relation\n");
+    if (!hasRelation(relName.c_str())){
+        cerr << "[ERROR] Relation <" << relName << "> does not exist." << endl;
         return RETVAL_ERR;
     }
-    checkComparison(coms, relName);
+    if (!checkComparison(coms, relName)){
+        cerr << "[ERROR] Invalid where-clause." << endl;
+        return RETVAL_ERR;
+    }
 
     RETVAL rc;
     auto records = retrieveRecords(relName, rc);
     if(rc != RETVAL_OK) {
-        printf("Error!");
+        cerr << "[ERROR] Error on retrieving records." << endl;
         return RETVAL_ERR;
     }
 
@@ -1210,6 +1337,44 @@ RETVAL SystemManager::Delete(std::string relName, std::vector<ComparisonTree::Co
     DataAttrInfo* dataAttrInfo;
     RETURNIF(dbHandle.fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo));
     SingleFileHandler *fileHandle = FileHandler::instance()->openFile(relName.c_str());
+
+    vector <RecordDescriptor*> toBeDeleted;
+    for (auto &rec: records)
+        if (isValid(coms, rec.second, relName))
+            toBeDeleted.push_back(&rec.second);
+
+    vector <DataFkInfo*> foreignKeys;   // 当前表作为主表的外键列表
+    for (auto &fk: dbHandle.foreignKeys)
+        if (strcmp(relName.c_str(), fk.masRelName) == 0)
+            foreignKeys.push_back(&fk);
+    for (auto &fk: foreignKeys){
+        auto masRelName = relName;
+        auto serRelName = fk->serRelName;
+        auto fkAttrCount = fk->attrCount;
+        vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+        if (fkAttrCount >= 1){
+            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+        }
+        if (fkAttrCount >= 2){
+            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+        }
+        if (fkAttrCount >= 3){
+            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+        }
+
+        // 要删除的这些entry是否被别的外键引用了
+        for (auto &delEnt: toBeDeleted){
+            auto record = delEnt->filteredByAttributeName(masAttrs, false);
+            if (existsRecord(serRelName, serAttrs, record.attrVals)){
+                cerr << "[ERROR] Deletion will damage foreign-key data integrity constraints." << endl;
+                return RETVAL_ERR;
+            }
+        }
+    }
+
     for (auto it = begin(records); it != end(records); ++it) {
         if (isValid(coms, it->second, relName)) {
             RecordID recordID = it->first;
@@ -1223,9 +1388,7 @@ RETVAL SystemManager::Delete(std::string relName, std::vector<ComparisonTree::Co
                         continue;
                     data = (char*)v.getElementPointer();
                     SingleIndexHandler indexHandle;
-                    RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(),
-                                                                 dataAttrInfo[i].indexNo,
-                                                                 indexHandle));
+                    RETURNIF(IndexHandler::instance()->OpenIndex(relName.c_str(), dataAttrInfo[i].indexNo, indexHandle));
                     indexHandle.DeleteEntry(data, recordID);
                 }
             }
@@ -1257,19 +1420,19 @@ bool SystemManager::checkAttributes(vector<SystemManager::Attribute> &attributes
                     attr.relName = rel;
                 }
             if (count == 0) {
-                printf("Not found attribute '%s'\n", attr.attrName.c_str());
+                // printf("Not found attribute '%s'\n", attr.attrName.c_str());
                 return false;
             } else if (count > 1) {
-                printf("Too many attribute named '%s'\n", attr.attrName.c_str());
+                // printf("Too many attribute named '%s'\n", attr.attrName.c_str());
                 return false;
             }
         } else {
             if (!hasRelation(attr.relName.c_str())) {
-                printf("No relation '%s'\n", attr.relName.c_str());
+                // printf("No relation '%s'\n", attr.relName.c_str());
                 return false;
             }
             if (!hasAttribute(attr.relName.c_str(), attr.attrName.c_str())) {
-                printf("No attribute '%s', in relation '%s'\n", attr.attrName.c_str(), attr.relName.c_str());
+                // printf("No attribute '%s', in relation '%s'\n", attr.attrName.c_str(), attr.relName.c_str());
                 return false;
             }
         }
@@ -1281,13 +1444,13 @@ bool SystemManager::checkComparison(std::vector<Comparison> &coms, std::string &
     for (auto &com : coms) {
         if (com.attr.relName.empty() || com.attr.relName == relation) {
             if (!hasAttribute(relation.c_str(), com.attr.attrName.c_str())) {
-                printf("Not found attribute '%s'\n", com.attr.attrName.c_str());
+                // printf("Not found attribute '%s'\n", com.attr.attrName.c_str());
                 return false;
             }
             if (com.attr.relName.empty())
                 com.attr.relName = relation;
         } else {
-            printf("Attributes should be in the same relation\n");
+            // printf("Attributes should be in the same relation\n");
             return false;
         }
     }
@@ -1415,6 +1578,7 @@ RETVAL SystemManager::qUpdate(const std::string& relName, const RecordID &record
     RETURNIF(rc);
     SingleFileHandler* fileHandle = recordManager->openFile(relName.c_str());
     RETURNIF(fileHandle->updateRecord(record));
+    recordManager->closeFile();
     return 0;
 }
 
@@ -1659,7 +1823,12 @@ RETVAL SystemManager::dropPrimaryKey(const char *relName){
                 return RETVAL_ERR;
             }
     
-    // TODO 检查是否是外键
+    // 检查是否是外键的主表
+    for (const auto &fk: dbHandle.foreignKeys)
+        if (strcmp(fk.masRelName, relName) == 0){
+            cerr << "[ERROR] This primary key is the master key of some certain foreign keys." << endl;
+            return RETVAL_ERR;
+        }
 
     // 合法，可删除主键
 
@@ -1924,4 +2093,105 @@ bool SystemManager::existsRecord(const char *relName, std::vector<AttributeTree:
     if (rc != RETVAL_OK)
         return false;
     return !records.empty();
+}
+
+RETVAL SystemManager::AddAttr(std::string relName, AttrInfo attr){
+
+}
+
+RETVAL SystemManager::DelAttr(std::string relName, std::string attrName){
+
+}
+
+RETVAL SystemManager::ModifyAttr(std::string relName, std::string attrName, AttrInfo attr){
+
+}
+
+RETVAL SystemManager::RenameTable(std::string a, std::string b){
+    if (!hasRelation(a.c_str())){
+        cerr << "[ERROR] No such table." << endl;
+        return RETVAL_ERR;
+    }
+    if (a == kDefaultRelCatName || a == kDefaultFkCatName || a == kDefaultIdxCatName || a == kDefaultAttrCatName){
+        cerr << "[ERROR] You cannot modify system table." << endl;
+        return RETVAL_ERR;
+    }
+    if (hasRelation(b.c_str())){
+        cerr << "[ERROR] Table <" << b << "> already exists." << endl;
+        return RETVAL_ERR;
+    }
+    RETURNIF(FileHandler::instance()->renameFile(a.c_str(), b.c_str()));
+
+    // 索引文件重命名
+    for (const auto &idx: dbHandle.indexes)
+        if (string(idx.relName) == a){
+            string attrName = idx.attrName;
+            for (const auto &attr: dbHandle.attributes)
+                if (string(attr.attrName) == attrName){
+                    string indexNo = to_string(attr.indexNo);
+                    string o = a + "_idx_" + indexNo;
+                    string n = b + "_idx_" + indexNo;
+                    RETURNIF(FileHandler::instance()->renameFile(o.c_str(), n.c_str()));
+                    break;
+                }
+        }
+    
+    // 系统表修改
+    for (int i = 0, limi = dbHandle.relationRecordIDs.size(); i < limi; ++i)
+        if (strcmp(dbHandle.relations[i].relName, a.c_str()) == 0){
+            DataRelInfo relData = dbHandle.relations[i];
+            RecordID relDataRID = dbHandle.relationRecordIDs[i];
+            strcpy(relData.relName, b.c_str());
+            SingleFileHandler *fileHandle = recordManager->openFile(kDefaultRelCatName);
+            Record record(relDataRID, (char*)(&relData), sizeof (DataRelInfo));
+            fileHandle->updateRecord(record);
+            recordManager->closeFile();
+        }
+    dbHandle.refreshHandle();
+
+    for (int i = 0, limi = dbHandle.attributes.size(); i < limi; ++i)
+        if (strcmp(dbHandle.attributes[i].relName, a.c_str()) == 0){
+            DataAttrInfo attrData = dbHandle.attributes[i];
+            RecordID attrDataRID = dbHandle.attributeRecordIDs[i];
+            strcpy(attrData.relName, b.c_str());
+            SingleFileHandler *fileHandle = recordManager->openFile(kDefaultAttrCatName);
+            Record record(attrDataRID, (char*)(&attrData), sizeof (DataAttrInfo));
+            fileHandle->updateRecord(record);
+            recordManager->closeFile();
+        }
+
+    for (int i = 0, limi = dbHandle.indexes.size(); i < limi; ++i)
+        if (strcmp(dbHandle.indexes[i].relName, a.c_str()) == 0){
+            DataIdxInfo idxData = dbHandle.indexes[i];
+            RecordID idxDataRID = dbHandle.indexRecordIDs[i];
+            strcpy(idxData.relName, b.c_str());
+            SingleFileHandler *fileHandle = recordManager->openFile(kDefaultIdxCatName);
+            Record record(idxDataRID, (char*)(&idxData), sizeof (DataIdxInfo));
+            fileHandle->updateRecord(record);
+            recordManager->closeFile();
+        }
+
+    for (int i = 0, limi = dbHandle.foreignKeys.size(); i < limi; ++i){
+        if (strcmp(dbHandle.foreignKeys[i].masRelName, a.c_str()) == 0){
+            DataFkInfo fkData = dbHandle.foreignKeys[i];
+            RecordID fkDataRID = dbHandle.foreignKeyRecordIDs[i];
+            strcpy(fkData.masRelName, b.c_str());
+            SingleFileHandler *fileHandle = recordManager->openFile(kDefaultFkCatName);
+            Record record(fkDataRID, (char*)(&fkData), sizeof (DataFkInfo));
+            fileHandle->updateRecord(record);
+            recordManager->closeFile();
+        }
+        if (strcmp(dbHandle.foreignKeys[i].serRelName, a.c_str()) == 0){
+            DataFkInfo fkData = dbHandle.foreignKeys[i];
+            RecordID fkDataRID = dbHandle.foreignKeyRecordIDs[i];
+            strcpy(fkData.serRelName, b.c_str());
+            SingleFileHandler *fileHandle = recordManager->openFile(kDefaultFkCatName);
+            Record record(fkDataRID, (char*)(&fkData), sizeof (DataFkInfo));
+            fileHandle->updateRecord(record);
+            recordManager->closeFile();
+        }
+    }
+
+    dbHandle.refreshHandle();
+    return RETVAL_OK;
 }

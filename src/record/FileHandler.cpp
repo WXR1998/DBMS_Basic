@@ -45,6 +45,26 @@ RETVAL FileHandler::destroyFile(const char *fileName) {
     return RETVAL_OK;
 }
 
+RETVAL FileHandler::renameFile(const char *fileNameA, const char *fileNameB){
+    if(currentFileHandle.isOpen()) {
+        RETVAL rc = closeFile(currentFileHandle);
+        if (rc != RETVAL_OK) {
+            cerr << "Close File Failed!" << endl;
+            exit(1);
+        }
+    }
+    RETVAL rc = fileManager->renameFile(fileNameA, fileNameB);
+    if (rc != RETVAL_OK)
+        return RETVAL_ERR;
+    return RETVAL_OK;
+    // int fileID;
+    // RETURNIF(fileManager->openFile(fileNameB, fileID));
+    // FirstPageInfo firstPageHandle(fileID, bufPageManager);
+    // firstPageHandle.init(recordSize);
+    // bufPageManager->close();
+    // RETURNIF(fileManager->closeFile(fileID));
+}
+
 RETVAL FileHandler::openFile(const char *fileName, SingleFileHandler &fileHandle) {
 
     int fileID;

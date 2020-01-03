@@ -34,6 +34,7 @@ class OperatorTree;
 class PrimarySetTree;
 class AddPrimaryTree;
 class ForeignSetTree;
+class RenameTree;
 
 class Tree {
 public:
@@ -471,6 +472,15 @@ public:
     void visit();
 private:
     std::string relName, fkName;
+};
+
+class RenameTree : public Tree {
+public:
+    RenameTree(const char *a, const char *b);
+    virtual ~RenameTree();
+    void visit();
+private:
+    std::string a, b;
 };
 
 

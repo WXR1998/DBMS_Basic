@@ -136,6 +136,15 @@ public:
 
 	}
 
+	RETVAL renameFile(const char *nameA, const char *nameB){
+		if (rename(nameA, nameB)){
+			cout << "fail" << endl;
+			return RETVAL_ERR;
+		} else {
+			return RETVAL_OK;
+		}
+	}
+
 	int newType() {
 		int t = tm->findLeftOne();
 		tm->setBit(t, 0);

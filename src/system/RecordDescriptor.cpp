@@ -114,6 +114,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
                 // Check NULL
                 cerr << "[ERROR] Insert NULL into NOT NULL attribute." << endl;
                 rc = RETVAL_ERR;
+                delete[] dataAttrInfo;
                 return recordDescriptor;
             }
             else {
@@ -137,6 +138,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
         else {
             cerr << "[ERROR] Input type is invalid." << endl;
             rc = RETVAL_ERR;
+            delete[] dataAttrInfo;
             return recordDescriptor;
         }
     }
@@ -174,8 +176,8 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
 }
 
 RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &relName,
-                                                          vector<std::string> &attrs,
-                                                          vector<AttrValue> vals, RETVAL &rc) {
+                                                        vector<std::string> &attrs,
+                                                        vector<AttrValue> vals, RETVAL &rc) {
     RecordDescriptor recordDescriptor;
     if (attrs.size() != vals.size()){
         cerr << "[ERROR] The length of insert attrs should equal to the length of insert vals." << endl;
@@ -200,6 +202,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
         if (idx == -1){
             rc = RETVAL_ERR;
             cerr << "[ERROR] Attribute <" << attrs[j] << "> not found in relation." << endl;
+            delete[] dataAttrInfo;
             return recordDescriptor;
         }
     }
@@ -213,9 +216,18 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
             }
         if (idx == -1){ // 这说明原表的列在attrs里没找到
             if (!dataAttrInfo[i].isDefault){    // 首先查看default
-                rc = RETVAL_ERR;
-                cerr << "[ERROR] Attribute <" << dataAttrInfo[i].attrName << "> has no default value, but you leave it blank." << endl;
-                return recordDescriptor;
+                if (dataAttrInfo[i].notNull){   // 限制不能为空
+                    rc = RETVAL_ERR;
+                    cerr << "[ERROR] Attribute <" << dataAttrInfo[i].attrName << "> has no default value and cannot be NULL, but you leave it blank." << endl;
+                    delete[] dataAttrInfo;
+                    return recordDescriptor;
+                }else{  // 填入NULL
+                    AttrValue val;
+                    val.isNull = true;
+                    val.type = dataAttrInfo[i].attrType;
+                    recordDescriptor.attrNames.push_back(dataAttrInfo[i].attrName);
+                    recordDescriptor.attrVals.push_back(val);
+                }
             }else{  // 从default中提取
                 AttrValue val;
                 val.type = dataAttrInfo[i].attrType;
@@ -249,6 +261,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
                     // Check NULL
                     cerr << "[ERROR] Insert NULL into NOT NULL attribute!" << endl;
                     rc = RETVAL_ERR;
+                    delete[] dataAttrInfo;
                     return recordDescriptor;
                 }
                 else {
@@ -265,6 +278,7 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
             else {
                 cerr << "[ERROR] Input type is invalid." << endl;
                 rc = RETVAL_ERR;
+                delete[] dataAttrInfo;
                 return recordDescriptor;
             }
         }

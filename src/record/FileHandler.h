@@ -17,6 +17,7 @@ public:
     RETVAL createFile(const char *fileName, int recordSize);
 
     RETVAL destroyFile(const char *fileName);
+    RETVAL renameFile(const char *fileNameA, const char *fileNameB);
 
     SingleFileHandler* openFile(const char* fileName);
     RETVAL closeFile();

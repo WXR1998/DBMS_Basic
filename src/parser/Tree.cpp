@@ -881,3 +881,12 @@ AddForeignTree::~AddForeignTree(){}
 void AddForeignTree::visit(){
     SystemManager::instance()->addForeignKey(fkName.c_str(), serRelName.c_str(), masRelName.c_str(), serAttrs, masAttrs);
 }
+
+RenameTree::RenameTree(const char *a, const char *b){
+    this->a = string(a);
+    this->b = string(b);
+}
+RenameTree::~RenameTree(){}
+void RenameTree::visit(){
+    SystemManager::instance()->RenameTable(a, b);
+}

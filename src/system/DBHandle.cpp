@@ -156,7 +156,7 @@ RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attri
         }
         else
         {
-            cerr << "[ERROR] Duplicate Attribute Name!" << endl;
+            cerr << "[ERROR] Duplicate attribute name." << endl;
             return RETVAL_ERR;
         }
         RETURNIF(fileHandle->insertRecord((const char*)&dataAttrInfo, recordID));
@@ -164,7 +164,6 @@ RETVAL DBHandle::createTable(const char *relName, int attrCount, AttrInfo *attri
 
     // Create New File
     RETURNIF(recordManager->createFile(relName, record_size + attrCount));
-
 
     DataRelInfo dataRelInfo;
     memset(&dataRelInfo, 0, sizeof(DataRelInfo));
@@ -199,7 +198,7 @@ RETVAL DBHandle::dropTable(const char *relName) {
     }
     if(!found)
     {
-        cerr << "[ERROR] No Such Table!" << endl;
+        cerr << "[ERROR] No such table." << endl;
         return RETVAL_ERR;
     }
 

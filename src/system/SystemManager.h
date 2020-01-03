@@ -68,6 +68,7 @@ public:
             AttrValue val,
             std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
+
     RETVAL Delete(std::string relName,
             std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
@@ -80,6 +81,11 @@ public:
                                         std::vector<std::string> rels,
                                         std::vector<ComparisonTree::ComparisonDescriptor> coms,
                                         RETVAL& rc);
+
+    RETVAL AddAttr(std::string relName, AttrInfo attr);
+    RETVAL DelAttr(std::string relName, std::string attrName);
+    RETVAL ModifyAttr(std::string relName, std::string attrName, AttrInfo attr);
+    RETVAL RenameTable(std::string a, std::string b);
 
     ~SystemManager();
 private:

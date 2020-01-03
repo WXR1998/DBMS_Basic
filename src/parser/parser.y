@@ -44,6 +44,7 @@ class Tree;
     DropPrimaryTree *dropPrimaryTree;
     ForeignSetTree *foreignSetTree;
     AddForeignTree *addForeignTree;
+    RenameTree *renameTree;
 }
 
 
@@ -265,14 +266,15 @@ alterStmt:
     | ALTER TABLE tbName CHANGE colName field
         {
             // TODO
-
             printf("TODO\n");
         }
     | ALTER TABLE tbName RENAME TO tbName
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new RenameTree($3, $6);
+            Tree::setInstance($$);
+            delete $3;
+            delete $6;
+            Tree::run();
         }
     | ALTER TABLE tbName ADD PRIMARY '(' columnList ')'
         {
