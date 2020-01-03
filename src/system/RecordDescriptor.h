@@ -27,7 +27,7 @@ public:
 
 
     // Used by Select Command
-    RecordDescriptor filteredByAttributeName(std::vector<AttributeTree::AttributeDescriptor> attrs) const;
+    RecordDescriptor filteredByAttributeName(std::vector<AttributeTree::AttributeDescriptor> attrs, bool checkRel = true) const;
     RecordDescriptor concatenate(const RecordDescriptor& next) const;
 
     AttrValue & operator [](const std::string &attrName);

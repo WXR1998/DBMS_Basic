@@ -42,6 +42,8 @@ class Tree;
     PrimarySetTree *primarySetTree;
     AddPrimaryTree *addPrimaryTree;
     DropPrimaryTree *dropPrimaryTree;
+    ForeignSetTree *foreignSetTree;
+    AddForeignTree *addForeignTree;
 }
 
 
@@ -288,27 +290,31 @@ alterStmt:
         }
     | ALTER TABLE tbName ADD CONSTRAINT pkName PRIMARY '(' columnList ')'
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new AddPrimaryTree($3, $9);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     | ALTER TABLE tbName DROP PRIMARY pkName
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new DropPrimaryTree($3);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     | ALTER TABLE tbName ADD CONSTRAINT fkName FOREIGN '(' columnList ')' REFERENCES tbName '(' columnList ')'
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new AddForeignTree($6, $3, $12, $9, $14);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     | ALTER TABLE tbName DROP FOREIGN fkName
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new DropForeignTree($3, $6);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     ;
 
@@ -354,10 +360,9 @@ field:
             // 这里检查columnList里出现的所有名称是否在fieldList里出现过
             $$ = new PrimarySetTree($3);
         }
-    | FOREIGN '(' colName ')' REFERENCES tbName '(' colName ')'
+    | FOREIGN fkName '(' columnList ')' REFERENCES tbName '(' columnList ')'
         {
-            // TODO
-            printf("TODO\n");
+            $$ = new ForeignSetTree($2, $7, $4, $9);
         }
     ;
 

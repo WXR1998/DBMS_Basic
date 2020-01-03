@@ -620,9 +620,9 @@ RETVAL SystemManager::createIndex(string relName, Attribute attrName, string idx
 
     // Build Up Index
     RETURNIF(IndexHandler::instance()->CreateIndex(relName.c_str(),
-                                                   indexCount,
-                                                   attrData.attrType,
-                                                   attrData.attrLength));
+                                                    indexCount,
+                                                    attrData.attrType,
+                                                    attrData.attrLength));
     SingleIndexHandler indexHandle;
     // 把当前所有行的对应列的值放进B+树
     RETVAL rc;
@@ -746,8 +746,8 @@ void SystemManager::resetInstance() {
 
 
 RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
-                         vector<std::string> rels,
-                         vector<ComparisonTree::ComparisonDescriptor> coms) {
+                        vector<std::string> rels,
+                        vector<ComparisonTree::ComparisonDescriptor> coms) {
     RETVAL rc = RETVAL_OK;
     vector<RecordDescriptor> records = select(attrs, rels, coms, rc);
     RETURNIF(rc);
@@ -765,8 +765,6 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
         Printer::printHeader(attrs);
         return RETVAL_OK;
     }
-    // Printer::printHeader(attrs);
-    // Printer::printBody(records, attrs);
     Printer::printAll(records, &attrs);
     return RETVAL_OK;
 }
@@ -779,8 +777,8 @@ RETVAL SystemManager::Select(vector<AttributeTree::AttributeDescriptor> attrs,
     whereClause:    coms
 */
 vector<RecordDescriptor> SystemManager::select(std::vector<AttributeTree::AttributeDescriptor> attrs,
-                         std::vector<std::string> rels,
-                         std::vector<ComparisonTree::ComparisonDescriptor> coms, RETVAL& rc) {
+                        std::vector<std::string> rels,
+                        std::vector<ComparisonTree::ComparisonDescriptor> coms, RETVAL& rc) {
     if (!checkRelations(rels)) {    // 确认存在rels表
         rc = RETVAL_ERR;
         return vector<RecordDescriptor>();
@@ -1406,7 +1404,7 @@ bool SystemManager::isValid(vector<SystemManager::Comparison> &coms, RecordDescr
 }
 
 RETVAL SystemManager::qUpdate(const std::string& relName, const RecordID &recordID,
-                          int attrNo, const AttrValue &newVal) {
+                        int attrNo, const AttrValue &newVal) {
     // TODO: Check Here!
     RETVAL rc = RETVAL_OK;
     RecordDescriptor recordDescriptor = dbHandle.retrieveOneRecord(relName, recordID, rc);
@@ -1428,8 +1426,8 @@ RETVAL SystemManager::qUpdate(const std::string& relName, const RecordID &record
     接着进行暴力筛选
 */
 vector<RecordDescriptor> SystemManager::retrieveRecordsByIndex(string relName,
-                                                               const vector<SystemManager::Comparison> &coms,
-                                                               RETVAL &rc) {
+                                                            const vector<SystemManager::Comparison> &coms,
+                                                            RETVAL &rc) {
     // First get Indices Map
     int attrCount;
     DataAttrInfo* dataAttrInfo;
@@ -1697,6 +1695,19 @@ RETVAL SystemManager::dropPrimaryKey(const char *relName){
     return RETVAL_OK;
 }
 
+RETVAL SystemManager::getPrimaryKeyList(const char *relName, vector<string> &plist){
+    if (!hasRelation(relName)){
+        cerr << "[ERROR] Relation <" << relName << "> does not exist." << endl;
+        return RETVAL_ERR;
+    }
+    plist.clear();
+    for (int i = 0, limi = dbHandle.attributes.size(); i < limi; ++i)
+        if (strcmp(relName, dbHandle.attributes[i].relName) == 0)
+            if (dbHandle.attributes[i].isPrimaryKey > 0)
+                plist.push_back(string(dbHandle.attributes[i].attrName));
+    return RETVAL_OK;
+}
+
 bool operator < (const vector<AttrValue> &a, const vector<AttrValue> &b) {
     if (a.size() != b.size()) return false;
     int len = a.size();
@@ -1714,4 +1725,203 @@ bool operator == (const vector<AttrValue> &a, const vector<AttrValue> &b) {
         if (a[i] != b[i]) return false;
     // a == b
     return true;
+}
+
+/*
+    插入一个外键
+    如果checked为真，表示已经确保插入的合法性
+*/
+RETVAL SystemManager::addForeignKey(const char *fkName, 
+    const char *serRelName, const char *masRelName, 
+    std::vector<AttributeTree::AttributeDescriptor> &serAttrs, std::vector<AttributeTree::AttributeDescriptor> &masAttrs, bool checked){
+
+    RETVAL rc;
+    if (!checked){
+        if (serAttrs.size() != masAttrs.size()){
+            cerr << "[ERROR] The lengths of column lists from servant table and master table should be equal." << endl;
+            return RETVAL_ERR;
+        }
+        int attrCount;
+        DataAttrInfo *attrInfos;
+        rc = fillAttributesFromTable(serRelName, attrCount, attrInfos);
+        if (rc != RETVAL_OK){
+            cerr << "[ERROR] Table name incorrect." << endl;
+            return RETVAL_ERR;
+        }
+        // 确认serAttrs在从表的attrs里出现
+        for (const auto &fkattr: serAttrs){
+            bool flag = false; 
+            for (int i = 0; i < attrCount; ++i)
+                if (fkattr.attrName == string(attrInfos[i].attrName)){
+                    flag = true;
+                    break;
+                }
+            if (!flag){
+                cerr << "[ERROR] <" << fkattr.attrName << "> is not an attribute in this table." << endl;
+                return RETVAL_ERR;
+            }
+        }
+        // 检查是否有重复的serAttrs和masAttrs键名
+        for (int i = 0, limi = serAttrs.size(); i < limi; ++i)
+            for (int j = i + 1; j < limi; ++j)
+                if (serAttrs[i].attrName == serAttrs[j].attrName ||
+                    masAttrs[i].attrName == masAttrs[j].attrName){
+                        cerr << "[ERROR] Duplicated attributes in foreign key setting clause." << endl;
+                        return RETVAL_ERR;
+                    }
+        // 检查外键列表serAttrs是否是主表的主键
+        vector<string> masPrimaryKeyList;
+        int rc = getPrimaryKeyList(masRelName, masPrimaryKeyList);
+        if (rc != RETVAL_OK) return rc;
+        for (const auto &fkattr: masAttrs){
+            bool found = false;
+            for (const auto &attr: masPrimaryKeyList)
+                if (attr == fkattr.attrName){
+                    found = true;
+                    break;
+                }
+            if (!found){
+                cerr << "[ERROR] <" << fkattr.attrName << "> is not one of the primary key of the master table." << endl;
+                return RETVAL_ERR;
+            }
+        }
+        if (masAttrs.size() != masPrimaryKeyList.size()){
+            cerr << "[ERROR] The attributes provided is not a primary key of the master table." << endl;
+            return RETVAL_ERR;
+        }
+        // 检查是否有同名外键
+        vector<DataFkInfo> flist;
+        getForeignKeyList(flist);
+        for (const auto &fkInfo: flist)
+            if (strcmp(fkInfo.fkName, fkName) == 0 && strcmp(fkInfo.serRelName, serRelName) == 0) {
+                cerr << "[ERROR] Foreign key named <" << fkInfo.fkName << "> on table <" << serRelName << "> already exists." << endl;
+                return RETVAL_ERR;
+            }
+        // 检查复合外键长度
+        if (serAttrs.size() > 3){
+            cerr << "[ERROR] Foreign keys should have no more than 3 attributes." << endl;
+            return RETVAL_ERR;
+        }
+        // 检查类型匹配性
+        for (int i = 0, limi = masAttrs.size(); i < limi; ++i){
+            int rc;
+            DataAttrInfo m;
+            rc = SystemManager::instance()->getAttributeInfo(masRelName, masAttrs[i].attrName.c_str(), m);
+            if (rc != RETVAL_OK){
+                cerr << "[ERROR] Cannot find attribute <" << masAttrs[i].attrName << "> in master table." << endl;
+                return RETVAL_ERR;
+            }
+            string serAttrName = serAttrs[i].attrName;
+            AttrType stype = T_NONE;
+            for (int j = 0; j < attrCount; ++j)
+                if (string(attrInfos[j].attrName) == serAttrName){
+                    stype = attrInfos[j].attrType;
+                    break;
+                }
+            if (m.attrType != stype){
+                cerr << "[ERROR] Foreign key types mismatch." << endl;
+                return RETVAL_ERR;
+            }
+        }
+
+        // 检查数据完整性
+        // 即：每一条ser的entry都能在mas表中找到对应
+        auto records = retrieveRecords(string(serRelName), rc);
+        if (rc != RETVAL_OK){
+            cerr << "[ERROR] Error when retrieving records." << endl;
+            return RETVAL_ERR;
+        }
+        for (const auto &recpair: records){
+            auto record = recpair.second.filteredByAttributeName(serAttrs, false);
+            if (!existsRecord(masRelName, masAttrs, record.attrVals)){
+                cerr << "[ERROR] In servant table, there are some entries do not satisfy data integrity constraints." << endl;
+                return RETVAL_ERR;
+            }
+        }
+
+        // 合法，可以建立外键约束
+    }
+    // 修改系统表设置
+    // fkcat
+    SingleFileHandler* fileHandle = recordManager->openFile(kDefaultFkCatName);
+    DataFkInfo dataFkInfo;
+    memset(&dataFkInfo, 0, sizeof(DataFkInfo));
+    strcpy(dataFkInfo.fkName, fkName);
+    strcpy(dataFkInfo.serRelName, serRelName);
+    strcpy(dataFkInfo.masRelName, masRelName);
+    dataFkInfo.attrCount = serAttrs.size();
+    if (dataFkInfo.attrCount >= 1){
+        strcpy(dataFkInfo.masAttr1Name, masAttrs[0].attrName.c_str());
+        strcpy(dataFkInfo.serAttr1Name, serAttrs[0].attrName.c_str());
+    }
+    if (dataFkInfo.attrCount >= 2){
+        strcpy(dataFkInfo.masAttr2Name, masAttrs[1].attrName.c_str());
+        strcpy(dataFkInfo.serAttr2Name, serAttrs[1].attrName.c_str());
+    }
+    if (dataFkInfo.attrCount >= 3){
+        strcpy(dataFkInfo.masAttr3Name, masAttrs[2].attrName.c_str());
+        strcpy(dataFkInfo.serAttr3Name, serAttrs[2].attrName.c_str());
+    }
+    RecordID recordID;
+    RETURNIF(fileHandle->insertRecord((const char*)&dataFkInfo, recordID));
+    recordManager->closeFile();
+
+    dbHandle.refreshHandle();
+    return RETVAL_OK;
+}
+
+RETVAL SystemManager::dropForeignKey(const char *relName, const char *fkName){
+    if (!hasRelation(relName)){
+        cerr << "[ERROR] Relation <" << relName << "> does not exist." << endl;
+        return RETVAL_ERR;
+    }
+    for (int i = 0, limi = dbHandle.foreignKeys.size(); i < limi; ++i){
+        auto &t = dbHandle.foreignKeys[i];
+        auto &rid = dbHandle.foreignKeyRecordIDs[i];
+        if (strcmp(relName, t.serRelName) == 0 && strcmp(fkName, t.fkName) == 0){
+            SingleFileHandler* fileHandle = recordManager->openFile(kDefaultFkCatName);
+            RETURNIF(fileHandle->deleteRecord(rid));
+            recordManager->closeFile();
+            dbHandle.refreshHandle();
+            return RETVAL_OK;
+        }
+    }
+    cerr << "[ERROR] Foreign key not found." << endl;
+    return RETVAL_ERR;
+}
+
+RETVAL SystemManager::getForeignKeyList(vector<DataFkInfo> &flist){
+    flist.clear();
+    for (const auto &t: dbHandle.foreignKeys)
+        flist.push_back(t);
+    return RETVAL_OK;
+}
+
+RETVAL SystemManager::getAttributeInfo(const char *relName, const char *attrName, DataAttrInfo &info){
+    if (!hasRelation(relName))
+        return RETVAL_ERR;
+    if (!hasAttribute(relName, attrName))
+        return RETVAL_ERR;
+    for (const auto &t: dbHandle.attributes)
+        if (strcmp(t.attrName, attrName) == 0 && strcmp(t.relName, relName) == 0){
+            info = t;
+            return RETVAL_OK;
+        }
+    return RETVAL_NOREC;
+}
+
+bool SystemManager::existsRecord(const char *relName, std::vector<AttributeTree::AttributeDescriptor> attrs, std::vector<AttrValue> vals){
+    vector<string> rels;
+    rels.push_back(string(relName));
+    vector<ComparisonTree::ComparisonDescriptor> coms;
+    if (attrs.size() != vals.size())
+        return false;
+    for (int i = 0, limi = attrs.size(); i < limi; ++i)
+        coms.push_back((ComparisonTree::ComparisonDescriptor){attrs[i], CmpOP::T_EQ, vals[i], attrs[i], false});
+
+    RETVAL rc = RETVAL_OK;
+    vector<RecordDescriptor> records = select(attrs, rels, coms, rc);
+    if (rc != RETVAL_OK)
+        return false;
+    return !records.empty();
 }

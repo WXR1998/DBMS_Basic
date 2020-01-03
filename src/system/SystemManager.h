@@ -30,6 +30,18 @@ public:
 
     RETVAL addPrimaryKey(const char *relName, std::vector<std::string> attrs);
     RETVAL dropPrimaryKey(const char *relName);
+    RETVAL getPrimaryKeyList(const char *relName, std::vector<std::string> &plist);
+
+    RETVAL addForeignKey(const char *fkName, const char *serRelName, const char *masRelName, 
+            std::vector<AttributeTree::AttributeDescriptor> &serAttrs, std::vector<AttributeTree::AttributeDescriptor> &masAttrs, bool checked = false);
+    RETVAL getForeignKeyList(std::vector<DataFkInfo> &flist);
+    RETVAL dropForeignKey(const char *relName, const char *fkName);
+
+    // 给定表名、列名，获得列详细信息
+    RETVAL getAttributeInfo(const char *relName, const char *attrName, DataAttrInfo &info);
+
+    // 指定的表里是否有这样的记录：它在attrs[i]的值为vals[i]
+    bool existsRecord(const char *relName, std::vector<AttributeTree::AttributeDescriptor> attrs, std::vector<AttrValue> vals);
 
     RETVAL load(const char *relName, const char *fileName);
     RETVAL help();
@@ -39,25 +51,25 @@ public:
     RETVAL print(const char *relName) {return dbHandle.print(relName);}
     std::map<RecordID, RecordDescriptor> qPrint(const char* relName) {return dbHandle.qPrint(relName);}
     RETVAL qUpdate(const std::string& relName, const RecordID& recordID,
-               int attrNo, const AttrValue& newVal);
+            int attrNo, const AttrValue& newVal);
     RETVAL set(const char *paramName, const char *value);
 
     // SQL Instruction API
     RETVAL Select(std::vector<AttributeTree::AttributeDescriptor> attrs,
-              std::vector<std::string> rels,
-              std::vector<ComparisonTree::ComparisonDescriptor> coms);
+            std::vector<std::string> rels,
+            std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
     RETVAL Insert(std::string relName, std::vector<std::string>* attrs,
-              std::vector<AttrValue> vals);
+            std::vector<AttrValue> vals);
 
     // 使得表relName中满足coms约束条件的attr列变为val
     RETVAL Update(std::string relName,
-              AttributeTree::AttributeDescriptor attr,
-              AttrValue val,
-              std::vector<ComparisonTree::ComparisonDescriptor> coms);
+            AttributeTree::AttributeDescriptor attr,
+            AttrValue val,
+            std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
     RETVAL Delete(std::string relName,
-              std::vector<ComparisonTree::ComparisonDescriptor> coms);
+            std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
     // Public Utility Functions
     // Given a Relation name in this DB, Fill the AttrInfo of this relation
@@ -65,9 +77,9 @@ public:
     {RETURNIF(dbHandle.fillAttributesFromTable(relName, attrCount, dataAttrInfo)); return RETVAL_OK;}
 
     std::vector<RecordDescriptor> select(std::vector<AttributeTree::AttributeDescriptor> attrs,
-                                         std::vector<std::string> rels,
-                                         std::vector<ComparisonTree::ComparisonDescriptor> coms,
-                                         RETVAL& rc);
+                                        std::vector<std::string> rels,
+                                        std::vector<ComparisonTree::ComparisonDescriptor> coms,
+                                        RETVAL& rc);
 
     ~SystemManager();
 private:
@@ -101,11 +113,11 @@ private:
     bool isValid(std::vector<Comparison> &coms, RecordDescriptor &record, const std::string &relation);
 
     void iterateCrossProduct(std::vector<std::vector<RecordDescriptor>> &records,
-                             std::vector<AttributeTree::AttributeDescriptor> attrs,
-                             std::vector<std::string> &rels,
-                             std::vector<Comparison> &coms,
-                             int depth,
-                             std::vector<RecordDescriptor>& output);
+                            std::vector<AttributeTree::AttributeDescriptor> attrs,
+                            std::vector<std::string> &rels,
+                            std::vector<Comparison> &coms,
+                            int depth,
+                            std::vector<RecordDescriptor>& output);
 
     std::vector<RecordDescriptor> retrieveRecordsByIndex(std::string relName, const std::vector<Comparison>& coms, RETVAL& rc);
 

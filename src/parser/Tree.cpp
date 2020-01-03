@@ -172,11 +172,108 @@ CreateTableTree::~CreateTableTree() {
 
 void CreateTableTree::visit() {
     int attrCount = columns->getColumnCount();
-    if (columns->error)
-        cerr << "[INFO] Operation Failed." << endl;
+    if (columns->error);
     else{
         AttrInfo *attrInfos = columns->getAttrInfos();
+        vector<ForeignSetTree*> fks = columns->getForeignKeys();
+        // 确认外键合法
+        vector<DataFkInfo> flist;
+        SystemManager::instance()->getForeignKeyList(flist);
+        for (const auto &foreignSetTree: fks){
+            auto masAttrs = foreignSetTree->masAttrs->getDescriptors(); // vector
+            auto serAttrs = foreignSetTree->serAttrs->getDescriptors();
+            auto masRelName = string(foreignSetTree->masRelName);
+            auto serRelName = this->tableName;
+            if (masAttrs.size() != serAttrs.size()){
+                cerr << "[ERROR] The lengths of column lists from servant table and master table should be equal." << endl;
+                return;
+            }
+            // 检查是否有重复的键名
+            for (int i = 0, limi = serAttrs.size(); i < limi; ++i)
+                for (int j = i + 1; j < limi; ++j)
+                    if (serAttrs[i].attrName == serAttrs[j].attrName ||
+                        masAttrs[i].attrName == masAttrs[j].attrName){
+                            cerr << "[ERROR] Duplicated attributes in foreign key setting clause." << endl;
+                            return;
+                        }
+            // 检查外键列表是否在从表中出现
+            for (const auto &fkattr: serAttrs){
+                bool flag = false;
+                for (int i = 0; i < attrCount; ++i)
+                    if (fkattr.attrName == string(attrInfos[i].attrName)){
+                        flag = true;
+                        break;
+                    }
+                if (!flag){
+                    cerr << "[ERROR] <" << fkattr.attrName << "> is not an attribute in this table." << endl;
+                    return;
+                }
+            }
+            // 检查外键列表是否是主表的主键
+            vector<string> masPrimaryKeyList;
+            int rc = SystemManager::instance()->getPrimaryKeyList(masRelName.c_str(), masPrimaryKeyList);
+            if (rc != RETVAL_OK) return;
+            for (const auto &fkattr: masAttrs){
+                bool found = false;
+                for (const auto &attr: masPrimaryKeyList)
+                    if (attr == fkattr.attrName){
+                        found = true;
+                        break;
+                    }
+                if (!found){
+                    cerr << "[ERROR] <" << fkattr.attrName << "> is not one of the primary key of the master table." << endl;
+                    return;
+                }
+            }
+            if (masAttrs.size() != masPrimaryKeyList.size()){
+                cerr << "[ERROR] The attributes provided is not a primary key of the master table." << endl;
+                return;
+            }
+            // 检查是否已有这个名字的外键
+            for (const auto &fkInfo: flist)
+                if (strcmp(fkInfo.fkName, foreignSetTree->fkName.c_str()) == 0 && strcmp(fkInfo.serRelName, serRelName.c_str()) == 0) {
+                    cerr << "[ERROR] Foreign key named <" << fkInfo.fkName << "> on table <" << serRelName << "> already exists." << endl;
+                    return;
+                }
+            // 检查复合外键长度
+            if (serAttrs.size() > 3){
+                cerr << "[ERROR] Foreign keys should have no more than 3 attributes." << endl;
+                return;
+            }
+            // 检查类型匹配性
+            for (int i = 0, limi = masAttrs.size(); i < limi; ++i){
+                int rc;
+                DataAttrInfo m;
+                rc = SystemManager::instance()->getAttributeInfo(masRelName.c_str(), masAttrs[i].attrName.c_str(), m);
+                if (rc != RETVAL_OK){
+                    cerr << "[ERROR] Cannot find attribute <" << masAttrs[i].attrName << "> in master table." << endl;
+                    return;
+                }
+                string serAttrName = serAttrs[i].attrName;
+                AttrType stype = T_NONE;
+                for (int j = 0; j < attrCount; ++j)
+                    if (string(attrInfos[j].attrName) == serAttrName){
+                        stype = attrInfos[j].attrType;
+                        break;
+                    }
+                if (m.attrType != stype){
+                    cerr << "[ERROR] Foreign key types mismatch." << endl;
+                    return;
+                }
+            }
+            
+            // 合法，可以添加外键
+        }
+
         SystemManager::instance()->createTable(tableName.c_str(), attrCount, attrInfos);
+        for (const auto &foreignSetTree: fks){
+            auto masAttrsDes = foreignSetTree->masAttrs->getDescriptors(); // vector
+            auto serAttrsDes = foreignSetTree->serAttrs->getDescriptors();
+            auto masRelName = string(foreignSetTree->masRelName);
+            auto serRelName = this->tableName;
+            SystemManager::instance()->addForeignKey(foreignSetTree->fkName.c_str(), 
+                serRelName.c_str(), masRelName.c_str(), serAttrsDes, masAttrsDes, true);
+        }
         // delete attrInfos;
         // columns->deleteAttrInfos();
     }
@@ -247,6 +344,7 @@ void DropTableTree::visit() {
 ColumnsTree::ColumnsTree() {
     attrInfos = NULL;
     primaryCount = 0;
+    fks.clear();
 }
 
 ColumnsTree::~ColumnsTree() {
@@ -255,7 +353,7 @@ ColumnsTree::~ColumnsTree() {
 }
 
 void ColumnsTree::addColumn(ColumnTree *column) {
-    if (!column->isPrimarySetTree){  // 是添加一列
+    if (!column->isPrimarySetTree && !column->isForeignSetTree){  // 是添加一列
         for (const auto &col : columns)
             if (col->columnName == column->columnName){
                 error = true;
@@ -264,7 +362,7 @@ void ColumnsTree::addColumn(ColumnTree *column) {
         columns.push_back(column);
         if (column->error)
             error = true;
-    }else{  // 是主键列表
+    }else if (column->isPrimarySetTree) {  // 是主键列表
         if (primaryCount > 0){
             error = true;
             cerr << "[ERROR] Duplicated primary key." << endl;
@@ -286,11 +384,21 @@ void ColumnsTree::addColumn(ColumnTree *column) {
                 cerr << "[ERROR] Primary key <" << des[i].attrName << "> not found. You should declare the attribute name first." << endl;
             }
         }
+    }else{  // 是外键列表，之后建表的时候再处理
+        ForeignSetTree* fst = static_cast<ForeignSetTree*>(column);
+        fks.push_back(fst);
     }
 }
 
+std::vector<ForeignSetTree *> ColumnsTree::getForeignKeys(){
+    std::vector<ForeignSetTree *> tmp;
+    for (const auto &t: fks)
+        tmp.push_back(t);
+    return tmp;
+}
+
 bool ColumnsTree::setPrimaryKey(const char *attr) {
-    printf("[WARNING] setPrimaryKey() is deprecated.\n");
+    cerr << "[WARNING] setPrimaryKey() is deprecated." << endl;
     bool found = false;
     for(auto& tree : columns) {
         if(tree->columnName == string(attr)) {
@@ -345,8 +453,12 @@ ColumnTree::ColumnTree(const char *columnName, AttrType type, int size,
     if(type == T_STRING || type == T_DATE)
         this->size++;
     isPrimarySetTree = false;
+    isForeignSetTree = false;
 }
-ColumnTree::ColumnTree(){}
+ColumnTree::ColumnTree(){
+    isPrimarySetTree = false;
+    isForeignSetTree = false;
+}
 
 void ColumnTree::setNotNull(int notNull) {
     this->notNull = notNull;
@@ -737,4 +849,35 @@ DropPrimaryTree::DropPrimaryTree(const char *relName){
 DropPrimaryTree::~DropPrimaryTree(){}
 void DropPrimaryTree::visit(){
     SystemManager::instance()->dropPrimaryKey(relName.c_str());
+}
+
+ForeignSetTree::ForeignSetTree(const char *fkName, const char *masRelName, AttributesTree *serAttrs, AttributesTree *masAttrs){
+    isForeignSetTree = true;
+    this->fkName = string(fkName);
+    this->masRelName = string(masRelName);
+    this->serAttrs = serAttrs;
+    this->masAttrs = masAttrs;
+}
+ForeignSetTree::~ForeignSetTree(){}
+
+DropForeignTree::DropForeignTree(const char *relName, const char *fkName){
+    this->relName = string(relName);
+    this->fkName = string(fkName);
+}
+DropForeignTree::~DropForeignTree(){}
+void DropForeignTree::visit(){
+    SystemManager::instance()->dropForeignKey(relName.c_str(), fkName.c_str());
+}
+
+
+AddForeignTree::AddForeignTree(const char *fkName, const char *serRelName, const char *masRelName, AttributesTree* serAttrs, AttributesTree* masAttrs){
+    this->fkName = string(fkName);
+    this->serRelName = string(serRelName);
+    this->masRelName = string(masRelName);
+    this->serAttrs = serAttrs->getDescriptors();
+    this->masAttrs = masAttrs->getDescriptors();
+}
+AddForeignTree::~AddForeignTree(){}
+void AddForeignTree::visit(){
+    SystemManager::instance()->addForeignKey(fkName.c_str(), serRelName.c_str(), masRelName.c_str(), serAttrs, masAttrs);
 }

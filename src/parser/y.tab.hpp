@@ -181,8 +181,10 @@ union YYSTYPE
     PrimarySetTree *primarySetTree;
     AddPrimaryTree *addPrimaryTree;
     DropPrimaryTree *dropPrimaryTree;
+    ForeignSetTree *foreignSetTree;
+    AddForeignTree *addForeignTree;
 
-#line 186 "y.tab.hpp" /* yacc.c:1909  */
+#line 188 "y.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

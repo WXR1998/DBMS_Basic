@@ -33,6 +33,7 @@ class SetClauseTree;
 class OperatorTree;
 class PrimarySetTree;
 class AddPrimaryTree;
+class ForeignSetTree;
 
 class Tree {
 public:
@@ -219,10 +220,13 @@ public:
     int getColumnCount();
     AttrInfo *getAttrInfos();
     void deleteAttrInfos();
+
+    std::vector<ForeignSetTree *> getForeignKeys();
 private:
     std::vector<ColumnTree *> columns;
     AttrInfo *attrInfos;
     int primaryCount;       // 主键有几个attr
+    std::vector<ForeignSetTree *> fks;
 };
 
 
@@ -237,6 +241,7 @@ public:
     void setNotNull(int notNull);
     friend class ColumnsTree;
     bool isPrimarySetTree;
+    bool isForeignSetTree;
 private:
     std::string columnName;
     AttrType type;
@@ -254,6 +259,16 @@ public:
     AttributesTree *attrs;
 };
 
+class ForeignSetTree : public ColumnTree {
+public:
+    ForeignSetTree(const char *fkName, const char *masRelName, AttributesTree *serAttrs, AttributesTree *masAttrs);
+    virtual ~ForeignSetTree();
+    std::string fkName;
+    std::string masRelName;
+    AttributesTree *serAttrs;
+    AttributesTree *masAttrs;
+private:
+};
 
 class AttributeTree : public Tree {
 public:
@@ -430,6 +445,16 @@ private:
     std::vector<std::string> attrs;
 };
 
+class AddForeignTree : public Tree {
+public:
+    AddForeignTree(const char *fkName, const char *serRelName, const char *masRelName, AttributesTree* serAttrs, AttributesTree* masAttrs);
+    virtual ~AddForeignTree();
+    void visit();
+private:
+    std::string fkName, serRelName, masRelName;
+    std::vector<AttributeTree::AttributeDescriptor> serAttrs, masAttrs;
+};
+
 class DropPrimaryTree : public Tree {
 public:
     DropPrimaryTree(const char *relName);
@@ -438,5 +463,15 @@ public:
 private:
     std::string relName;
 };
+
+class DropForeignTree : public Tree {
+public:
+    DropForeignTree(const char *relName, const char *fkName);
+    virtual ~DropForeignTree();
+    void visit();
+private:
+    std::string relName, fkName;
+};
+
 
 #endif //DATABASE_TREE_H

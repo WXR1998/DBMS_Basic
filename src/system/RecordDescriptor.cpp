@@ -275,14 +275,15 @@ RecordDescriptor RecordDescriptor::createRecordDescriptor(const std::string &rel
 }
 
 // Filter Attributes to create a new RecordDescriptor
-RecordDescriptor RecordDescriptor::filteredByAttributeName(std::vector<AttributeTree::AttributeDescriptor> attrs) const{
+RecordDescriptor RecordDescriptor::filteredByAttributeName(std::vector<AttributeTree::AttributeDescriptor> attrs, bool checkRel) const{
     RecordDescriptor recordDescriptor;
     recordDescriptor.relName = relName;
     // TODO: Check this Seqence
     for (const auto &attr : attrs) {
         for (int i = 0; i < attrNames.size(); ++i) {
-            if (attr.relName != relName)
-                continue;
+            if (checkRel)
+                if (attr.relName != relName)
+                    continue;
             if(attrNames[i] == attr.attrName) {
                 recordDescriptor.attrNames.push_back(attr.attrName);
                 recordDescriptor.attrVals.push_back(attrVals[i]);

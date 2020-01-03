@@ -162,6 +162,7 @@ void Printer::printAll(vector<RecordDescriptor> recordDescriptors, std::vector<A
         c << endl;
     }
     printFooter(c);
+    c << "Total = " << recordDescriptors.size() << " entries." << endl;
 }
 
 void Printer::printBar(ostream &c){
