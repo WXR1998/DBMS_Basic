@@ -180,8 +180,9 @@ union YYSTYPE
     OperatorTree *operatorTree;
     PrimarySetTree *primarySetTree;
     AddPrimaryTree *addPrimaryTree;
+    DropPrimaryTree *dropPrimaryTree;
 
-#line 185 "y.tab.hpp" /* yacc.c:1909  */
+#line 186 "y.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

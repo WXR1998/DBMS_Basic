@@ -430,4 +430,13 @@ private:
     std::vector<std::string> attrs;
 };
 
+class DropPrimaryTree : public Tree {
+public:
+    DropPrimaryTree(const char *relName);
+    virtual ~DropPrimaryTree();
+    void visit();
+private:
+    std::string relName;
+};
+
 #endif //DATABASE_TREE_H

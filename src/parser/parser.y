@@ -41,6 +41,7 @@ class Tree;
     OperatorTree *operatorTree;
     PrimarySetTree *primarySetTree;
     AddPrimaryTree *addPrimaryTree;
+    DropPrimaryTree *dropPrimaryTree;
 }
 
 
@@ -280,9 +281,10 @@ alterStmt:
         }
     | ALTER TABLE tbName DROP PRIMARY
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new DropPrimaryTree($3);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     | ALTER TABLE tbName ADD CONSTRAINT pkName PRIMARY '(' columnList ')'
         {

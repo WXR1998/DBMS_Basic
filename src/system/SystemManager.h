@@ -29,6 +29,7 @@ public:
     RETVAL dropIndex(std::string relName, std::string idxName);
 
     RETVAL addPrimaryKey(const char *relName, std::vector<std::string> attrs);
+    RETVAL dropPrimaryKey(const char *relName);
 
     RETVAL load(const char *relName, const char *fileName);
     RETVAL help();

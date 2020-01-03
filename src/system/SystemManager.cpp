@@ -1647,6 +1647,56 @@ RETVAL SystemManager::addPrimaryKey(const char *relName, std::vector<std::string
     return RETVAL_OK;
 }
 
+RETVAL SystemManager::dropPrimaryKey(const char *relName){
+    if (!hasRelation(relName)){
+        cerr << "[ERROR] Relation <" << relName << "> does not exist." << endl;
+        return RETVAL_ERR;
+    }
+
+    // 检查表relName是否有主键
+    for (int i = 0, limi = dbHandle.relations.size(); i < limi; ++i)
+        if (strcmp(relName, dbHandle.relations[i].relName) == 0)
+            if (dbHandle.relations[i].primaryCount == 0){
+                cerr << "[ERROR] Relation <" << relName << "> does not have a primary key." << endl;
+                return RETVAL_ERR;
+            }
+    
+    // TODO 检查是否是外键
+
+    // 合法，可删除主键
+
+    // 修改relcat
+    RecordID relRID;
+    DataRelInfo relData;
+    for (int i = 0, limi = dbHandle.relations.size(); i < limi; ++i)
+        if (strcmp(dbHandle.relations[i].relName, relName) == 0){
+            relRID = dbHandle.relationRecordIDs[i];
+            relData = dbHandle.relations[i];
+            break;
+        }
+    relData.primaryCount = 0;
+    SingleFileHandler *fileHandle = recordManager->openFile(kDefaultRelCatName);
+    Record relRecord(relRID, (char*)(&relData), sizeof (DataRelInfo));
+    fileHandle->updateRecord(relRecord);
+    recordManager->closeFile();
+
+    // 修改attrcat
+    for (int i = 0, limi = dbHandle.attributes.size(); i < limi; ++i)
+        if (strcmp(dbHandle.attributes[i].relName, relName) == 0 && dbHandle.attributes[i].isPrimaryKey > 0){
+            RecordID attrRID = dbHandle.attributeRecordIDs[i];
+            DataAttrInfo attrData = dbHandle.attributes[i];
+            attrData.isPrimaryKey = 0;
+            attrData.notNull = 0;
+            SingleFileHandler *fileHandle = recordManager->openFile(kDefaultAttrCatName);
+            Record attrRecord(attrRID, (char*)(&attrData), sizeof (DataAttrInfo));
+            fileHandle->updateRecord(attrRecord);
+            recordManager->closeFile();
+        }
+
+    dbHandle.refreshHandle();
+    return RETVAL_OK;
+}
+
 bool operator < (const vector<AttrValue> &a, const vector<AttrValue> &b) {
     if (a.size() != b.size()) return false;
     int len = a.size();

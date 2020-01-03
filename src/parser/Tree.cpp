@@ -730,3 +730,11 @@ AddPrimaryTree::~AddPrimaryTree(){}
 void AddPrimaryTree::visit(){
     SystemManager::instance()->addPrimaryKey(relName.c_str(), attrs);
 }
+
+DropPrimaryTree::DropPrimaryTree(const char *relName){
+    this->relName = string(relName);
+}
+DropPrimaryTree::~DropPrimaryTree(){}
+void DropPrimaryTree::visit(){
+    SystemManager::instance()->dropPrimaryKey(relName.c_str());
+}
