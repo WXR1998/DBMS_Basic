@@ -90,14 +90,15 @@ private:
 
 class InsertTree : public Tree {
 public:
-    InsertTree(const char *relationName, InsertValueTree* insertValueTree);
-    InsertTree(const char *relationName, AttributesTree *attrs, InsertValueTree* insertValueTree);
+    InsertTree(const char *relationName, InsertValueTree* insertValueTree, bool force = false);
+    InsertTree(const char *relationName, AttributesTree *attrs, InsertValueTree* insertValueTree, bool force = false);
     virtual ~InsertTree();
     void visit();
 private:
     std::string relationName;
     InsertValueTree* insertValueTree;
     AttributesTree* attrs;
+    bool force;
 };
 
 

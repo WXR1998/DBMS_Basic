@@ -26,8 +26,8 @@ void yyerror(const char *);
 
 DIGIT           [0-9]
 DATE            (\|((((1[6-9]|[2-9][0-9])[0-9]{2})-(0?[13578]|1[02])-(0?[1-9]|[12][0-9]|3[01]))|(((1[6-9]|[2-9][0-9])[0-9]{2})-(0?[13456789]|1[012])-(0?[1-9]|[12][0-9]|30))|(((1[6-9]|[2-9][0-9])[0-9]{2})-0?2-(0?[1-9]|1[0-9]|2[0-8]))|(((1[6-9]|[2-9][0-9])(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))-0?2-29))\|)
-INTEGER         {DIGIT}+
-FLOAT           {DIGIT}+\.{DIGIT}*
+INTEGER         -*{DIGIT}+
+FLOAT           -*{DIGIT}+\.{DIGIT}*
 IDENTIFIER      [a-z][a-z0-9_]*
 WHITESPACE      [ \t\n]
 STRING          (\'[^\']*\')
@@ -76,6 +76,7 @@ IS              { /*printf("IS "); */ return IS; }
 NULL            { /*printf("NULL "); */ return T_NULL; }
 ON              { /*printf("ON "); */ return ON;}
 TO              { /*printf("TO "); */ return TO;}
+FORCE           { return FORCE;}
 int             { /*printf("int "); */ return KINT; }
 float           { /*printf("float "); */ return KFLOAT; }
 varchar         { /*printf("varchar "); */ return KVARCHAR; }

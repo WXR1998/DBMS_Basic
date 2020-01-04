@@ -55,6 +55,7 @@ class Tree;
 %token STAR FROM WHERE OPERATOR VALUES SET INTO
 %token DATABASES DEFAULT CONSTRAINT CHANGE ALTER 
 %token ADD RENAME REFERENCES FOREIGN ON TO
+%token FORCE
 
 
 /* COLUMN DESCPRITION */
@@ -183,6 +184,20 @@ tbStmt:
     | INSERT INTO tbName '(' columnList ')' VALUES valueLists
         {
             $$ = new InsertTree($3, $5, $8);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
+        }
+    | INSERT INTO tbName VALUES valueLists FORCE
+        {
+            $$ = new InsertTree($3, $5, true);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
+        }
+    | INSERT INTO tbName '(' columnList ')' VALUES valueLists FORCE
+        {
+            $$ = new InsertTree($3, $5, $8, true);
             Tree::setInstance($$);
             delete $3;
             Tree::run();

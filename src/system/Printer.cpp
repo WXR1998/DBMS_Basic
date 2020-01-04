@@ -15,7 +15,7 @@ vector<int> Printer::widths;
 template <class T>
 int length(T obj){
     ostringstream ss;
-    ss << obj;
+    ss << fixed << setprecision(2) << obj;
     return ss.str().size();
 }
 
@@ -145,7 +145,7 @@ void Printer::printAll(vector<RecordDescriptor> recordDescriptors, std::vector<A
                         c << setw(width) << val.i << " | ";
                         break;
                     case T_FLOAT :
-                        c << setw(width) << val.f << " | ";
+                        c << setw(width) << fixed << setprecision(2) << val.f << " | ";
                         break;
                     case T_STRING :
                         c << setw(width) << val.s << " | ";

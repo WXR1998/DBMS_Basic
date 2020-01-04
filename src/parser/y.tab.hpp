@@ -74,28 +74,29 @@ extern int yydebug;
     FOREIGN = 284,
     ON = 285,
     TO = 286,
-    KINT = 287,
-    KFLOAT = 288,
-    KVARCHAR = 289,
-    KDATE = 290,
-    INTEGER = 291,
-    FLOAT = 292,
-    STRING = 293,
-    IDENTIFIER = 294,
-    DATE = 295,
-    EQ = 296,
-    GT = 297,
-    LT = 298,
-    GE = 299,
-    LE = 300,
-    NE = 301,
-    NOTNULL = 302,
-    PRIMARY = 303,
-    DESC = 304,
-    INDEX = 305,
-    T_NULL = 306,
-    IS = 307,
-    AND = 308
+    FORCE = 287,
+    KINT = 288,
+    KFLOAT = 289,
+    KVARCHAR = 290,
+    KDATE = 291,
+    INTEGER = 292,
+    FLOAT = 293,
+    STRING = 294,
+    IDENTIFIER = 295,
+    DATE = 296,
+    EQ = 297,
+    GT = 298,
+    LT = 299,
+    GE = 300,
+    LE = 301,
+    NE = 302,
+    NOTNULL = 303,
+    PRIMARY = 304,
+    DESC = 305,
+    INDEX = 306,
+    T_NULL = 307,
+    IS = 308,
+    AND = 309
   };
 #endif
 /* Tokens.  */
@@ -128,28 +129,29 @@ extern int yydebug;
 #define FOREIGN 284
 #define ON 285
 #define TO 286
-#define KINT 287
-#define KFLOAT 288
-#define KVARCHAR 289
-#define KDATE 290
-#define INTEGER 291
-#define FLOAT 292
-#define STRING 293
-#define IDENTIFIER 294
-#define DATE 295
-#define EQ 296
-#define GT 297
-#define LT 298
-#define GE 299
-#define LE 300
-#define NE 301
-#define NOTNULL 302
-#define PRIMARY 303
-#define DESC 304
-#define INDEX 305
-#define T_NULL 306
-#define IS 307
-#define AND 308
+#define FORCE 287
+#define KINT 288
+#define KFLOAT 289
+#define KVARCHAR 290
+#define KDATE 291
+#define INTEGER 292
+#define FLOAT 293
+#define STRING 294
+#define IDENTIFIER 295
+#define DATE 296
+#define EQ 297
+#define GT 298
+#define LT 299
+#define GE 300
+#define LE 301
+#define NE 302
+#define NOTNULL 303
+#define PRIMARY 304
+#define DESC 305
+#define INDEX 306
+#define T_NULL 307
+#define IS 308
+#define AND 309
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -185,7 +187,7 @@ union YYSTYPE
     AddForeignTree *addForeignTree;
     RenameTree *renameTree;
 
-#line 189 "y.tab.hpp" /* yacc.c:1909  */
+#line 191 "y.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

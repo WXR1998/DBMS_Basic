@@ -74,16 +74,18 @@ void SelectTree::visit() {
 
 
 /* InsertTree */
-InsertTree::InsertTree(const char *relationName, InsertValueTree* insertValueTree) {
+InsertTree::InsertTree(const char *relationName, InsertValueTree* insertValueTree, bool force) {
     this->relationName = string(relationName);
     this->insertValueTree = insertValueTree;
     this->attrs = NULL;
+    this->force = force;
 }
 
-InsertTree::InsertTree(const char *relationName, AttributesTree* attrs, InsertValueTree* insertValueTree) {
+InsertTree::InsertTree(const char *relationName, AttributesTree* attrs, InsertValueTree* insertValueTree, bool force) {
     this->relationName = string(relationName);
     this->insertValueTree = insertValueTree;
     this->attrs = attrs;
+    this->force = force;
 }
 
 InsertTree::~InsertTree() {
@@ -97,10 +99,11 @@ void InsertTree::visit() {
         for (auto t: des)
             attrVector.push_back(t.attrName);
         for(const auto& constValues : insertValueTree->values)
-            SystemManager::instance()->Insert(relationName, &attrVector, constValues->getConstValues());
+            // force = true -> 不检查, 传入false
+            SystemManager::instance()->Insert(relationName, &attrVector, constValues->getConstValues(), !force);
     }else{
         for(const auto& constValues : insertValueTree->values)
-            SystemManager::instance()->Insert(relationName, NULL, constValues->getConstValues());
+            SystemManager::instance()->Insert(relationName, NULL, constValues->getConstValues(), !force);
     }
 }
 
