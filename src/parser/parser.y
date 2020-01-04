@@ -115,8 +115,9 @@ stmt:
 sysStmt:
     SHOW DATABASES
         {
-            // TODO
-            printf("TODO\n");
+            $$ = new ShowDatabaseTree();
+            Tree::setInstance($$);
+            Tree::run();
         }
     ;
 
@@ -253,20 +254,26 @@ idxStmt:
 alterStmt:
     ALTER TABLE tbName ADD field
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new AddAttrTree($3, $5);
+            Tree::setInstance($$);
+            delete $3;
+            Tree::run();
         }
     | ALTER TABLE tbName DROP colName
         {
-            // TODO
-            printf("TODO\n");
-
+            $$ = new DropAttrTree($3, $5);
+            Tree::setInstance($$);
+            delete $3;
+            delete $5;
+            Tree::run();
         }
     | ALTER TABLE tbName CHANGE colName field
         {
-            // TODO
-            printf("TODO\n");
+            $$ = new AlterAttrTree($3, $5, $6);
+            Tree::setInstance($$);
+            delete $3;
+            delete $5;
+            Tree::run();
         }
     | ALTER TABLE tbName RENAME TO tbName
         {

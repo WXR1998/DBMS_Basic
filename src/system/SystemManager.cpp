@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <algorithm>
+#include <dirent.h>
 #include "SystemManager.h"
 #include "../record/FileScan.h"
 #include "DBHandle.h"
@@ -523,7 +524,7 @@ RETVAL SystemManager::createTable(const char *relName, int attrCount, AttrInfo *
     return RETVAL_OK;
 }
 
-RETVAL SystemManager::dropTable(const char *relName) {
+RETVAL SystemManager::dropTable(const char *relName, bool check) {
     if(strcmp(relName, kDefaultRelCatName) == 0 || strcmp(relName, kDefaultAttrCatName) == 0 
         || strcmp(relName, kDefaultFkCatName) == 0 || strcmp(relName, kDefaultIdxCatName) == 0){
             cerr << "[ERROR] You cannot drop a system table." << endl;
@@ -531,17 +532,19 @@ RETVAL SystemManager::dropTable(const char *relName) {
     }
 
     // 删除一个表之前，要先把它的索引、外键都删除
-    vector<string> fkNames;
-    for (const auto &fk: dbHandle.foreignKeys){
-        if (strcmp(relName, fk.masRelName) == 0){
-            cerr << "[ERROR] This table is the master table of a foreign key. Please drop that foreign key first." << endl;
-            return RETVAL_ERR;
+    if (check){
+        vector<string> fkNames;
+        for (const auto &fk: dbHandle.foreignKeys){
+            if (strcmp(relName, fk.masRelName) == 0){
+                cerr << "[ERROR] This table is the master table of a foreign key. Please drop that foreign key first." << endl;
+                return RETVAL_ERR;
+            }
+            if (strcmp(relName, fk.serRelName) == 0)
+                fkNames.push_back(string(fk.fkName));
         }
-        if (strcmp(relName, fk.serRelName) == 0)
-            fkNames.push_back(string(fk.fkName));
+        for (const auto &s: fkNames)
+            RETURNIF(dropForeignKey(relName, s.c_str()));
     }
-    for (const auto &s: fkNames)
-        RETURNIF(dropForeignKey(relName, s.c_str()));
 
     // 删除索引
     vector<const char*> indexNames;
@@ -891,7 +894,7 @@ void SystemManager::iterateCrossProduct(vector<vector<RecordDescriptor>> &record
     如果主键存在索引，就在索引里找重复
     否则扫描文件，寻找是否有重复。如果没有才可插入
 */
-RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attrs, std::vector<AttrValue> vals) {
+RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attrs, std::vector<AttrValue> vals, bool check) {
     if (!hasRelation(relName.c_str())) {
         cerr << "[ERROR] No such relation." << endl;
         return RETVAL_ERR;
@@ -918,7 +921,7 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
         }
 
     // 这里实际上可以调用select()
-    if (primaryCount > 0){  // 存在主键
+    if (primaryCount > 0 && check){  // 存在主键
         for (int i = 1; i <= primaryCount; ++i)
             for (int j = 0; j < attrCount; ++j)
                 if (dataAttrInfo[j].isPrimaryKey == i){
@@ -963,32 +966,34 @@ RETVAL SystemManager::Insert(std::string relName, std::vector<std::string>* attr
     // 主键完整性检查完毕
 
     // 检查外键。如果当前表中存在attr是某几个外键的一部分
-    vector <DataFkInfo*> foreignKeys;   // 当前表作为从表的外键列表
-    for (auto &fk: dbHandle.foreignKeys)
-        if (strcmp(relName.c_str(), fk.serRelName) == 0)
-            foreignKeys.push_back(&fk);
-    for (auto &fk: foreignKeys){
-        auto masRelName = fk->masRelName;
-        auto serRelName = relName;
-        auto fkAttrCount = fk->attrCount;
-        vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
-        if (fkAttrCount >= 1){
-            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
-            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
-        }
-        if (fkAttrCount >= 2){
-            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
-            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
-        }
-        if (fkAttrCount >= 3){
-            masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
-            serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
-        }
-        // 对于这个外键，要检查对应的主表中是否存在值为xxx的entry
-        auto record = descriptor.filteredByAttributeName(serAttrs, false);
-        if (!existsRecord(masRelName, masAttrs, record.attrVals)){
-            cerr << "[ERROR] Insertion will damage foreign-key data integrity constraints." << endl;
-            return RETVAL_ERR;
+    if (check){
+        vector <DataFkInfo*> foreignKeys;   // 当前表作为从表的外键列表
+        for (auto &fk: dbHandle.foreignKeys)
+            if (strcmp(relName.c_str(), fk.serRelName) == 0)
+                foreignKeys.push_back(&fk);
+        for (auto &fk: foreignKeys){
+            auto masRelName = fk->masRelName;
+            auto serRelName = relName;
+            auto fkAttrCount = fk->attrCount;
+            vector<AttributeTree::AttributeDescriptor> masAttrs, serAttrs;
+            if (fkAttrCount >= 1){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr1Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr1Name)});
+            }
+            if (fkAttrCount >= 2){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr2Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr2Name)});
+            }
+            if (fkAttrCount >= 3){
+                masAttrs.push_back((AttributeTree::AttributeDescriptor){string(masRelName), string(fk->masAttr3Name)});
+                serAttrs.push_back((AttributeTree::AttributeDescriptor){string(serRelName), string(fk->serAttr3Name)});
+            }
+            // 对于这个外键，要检查对应的主表中是否存在值为xxx的entry
+            auto record = descriptor.filteredByAttributeName(serAttrs, false);
+            if (!existsRecord(masRelName, masAttrs, record.attrVals)){
+                cerr << "[ERROR] Insertion will damage foreign-key data integrity constraints." << endl;
+                return RETVAL_ERR;
+            }
         }
     }
     // 外键完整性检查完毕
@@ -2095,16 +2100,171 @@ bool SystemManager::existsRecord(const char *relName, std::vector<AttributeTree:
     return !records.empty();
 }
 
+// 给表添加一列，实际上是先把这个表删掉，然后再添加一个表，新表多了一列
 RETVAL SystemManager::AddAttr(std::string relName, AttrInfo attr){
+    if (!hasRelation(relName.c_str())){
+        cerr << "[ERROR] No such table." << endl;
+        return RETVAL_ERR;
+    }
+    if (attr.notNull && !attr.isDefault){
+        cerr << "[ERROR] New attribute will be filled with default value or NULL. But this attribute is NOT NULL and no default value is provided." << endl;
+        return RETVAL_ERR;
+    }
+    if (attr.notNull && attr.isDefault && attr.defaultVal.isNull){
+        cerr << "[ERROR] Default value is NULL but attribute cannot be NULL." << endl;
+        return RETVAL_ERR;
+    }
+    int attrCount;
+    DataAttrInfo *dataAttrInfo;
+    RETURNIF(fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo));
+    RETVAL rc;
+    auto records = retrieveRecords(relName, rc);
 
+    vector<pair<string, string>> indexes;
+    for (const auto &idx: dbHandle.indexes)
+        if (strcmp(idx.relName, relName.c_str()) == 0)
+            indexes.push_back(make_pair(string(idx.idxName), string(idx.attrName)));
+
+    // 删除表再加入表
+    dropTable(relName.c_str(), false);
+    AttrInfo *attrInfo = new AttrInfo[attrCount + 1];
+    for (int i = 0; i < attrCount; ++i){
+        strcpy(attrInfo[i].attrName, dataAttrInfo[i].attrName);
+        attrInfo[i].attrLength = dataAttrInfo[i].attrLength;
+        attrInfo[i].attrType = dataAttrInfo[i].attrType;
+        attrInfo[i].isPrimaryKey = dataAttrInfo[i].isPrimaryKey;
+        attrInfo[i].notNull = dataAttrInfo[i].notNull;
+        attrInfo[i].isDefault = dataAttrInfo[i].isDefault;
+        if (attrInfo[i].isDefault){
+            if (attrInfo[i].defaultVal.isNull)
+                *((unsigned int*)dataAttrInfo[i].defaultVal) = NULL_MAGIC_NUMBER;  // 默认值为NULL，则用magicnumber来记载
+            else
+                switch (attrInfo[i].attrType){
+                    case T_INT:
+                        memcpy((void*)dataAttrInfo[i].defaultVal, (void*)&attrInfo[i].defaultVal.i, sizeof (int));
+                        break;
+                    case T_FLOAT:
+                        memcpy((void*)dataAttrInfo[i].defaultVal, (void*)&attrInfo[i].defaultVal.f, sizeof (float));
+                        break;
+                    case T_STRING:
+                        strcpy(dataAttrInfo[i].defaultVal, attrInfo[i].defaultVal.s.c_str());
+                        break;
+                    case T_DATE:
+                        strcpy(dataAttrInfo[i].defaultVal, attrInfo[i].defaultVal.s.c_str());
+                        break;
+                }
+        }
+    }
+    attrInfo[attrCount] = attr;
+    createTable(relName.c_str(), attrCount + 1, attrInfo);
+
+    for (const auto &idxp: indexes)
+        createIndex(relName, (SystemManager::Attribute){relName, idxp.second}, idxp.first);
+
+    for (auto record: records){
+        if (!attr.isDefault)
+            record.second.attrVals.push_back((AttrValue){attr.attrType, 0, 0.0, string(), true});
+        else
+            record.second.attrVals.push_back(attr.defaultVal);
+        Insert(relName, NULL, record.second.attrVals, false);
+    }
+    delete[] attrInfo;
+    return RETVAL_OK;
 }
 
 RETVAL SystemManager::DelAttr(std::string relName, std::string attrName){
+    if (!hasRelation(relName.c_str())){
+        cerr << "[ERROR] No such table." << endl;
+        return RETVAL_ERR;
+    }
+    if (!hasAttribute(relName.c_str(), attrName.c_str())){
+        cerr << "[ERROR] No such attribute in table <" << relName << ">." << endl;
+        return RETVAL_ERR;
+    }
+    // 判断主键
+    for (const auto &pk: dbHandle.attributes)
+        if (relName == string(pk.relName) && attrName == string(pk.attrName))
+            if (pk.isPrimaryKey){
+                cerr << "[ERROR] Cannot delete an attribute which is a part of primary key." << endl;
+                return RETVAL_ERR;
+            }
+    // 判断外键
+    for (const auto &fk: dbHandle.foreignKeys)
+        if (string(fk.serRelName) == relName)
+            if (string(fk.serAttr1Name) == attrName || 
+                string(fk.serAttr2Name) == attrName || 
+                string(fk.serAttr3Name) == attrName){
+                    cerr << "[ERROR] Cannot delete an attribute which is a part of a certain foreign key." << endl;
+                    return RETVAL_ERR;
+                }
 
+    int attrCount;
+    DataAttrInfo *dataAttrInfo;
+    RETURNIF(fillAttributesFromTable(relName.c_str(), attrCount, dataAttrInfo));
+    RETVAL rc;
+    auto records = retrieveRecords(relName, rc);
+
+    vector<pair<string, string>> indexes;
+    for (const auto &idx: dbHandle.indexes)
+        if (strcmp(idx.relName, relName.c_str()) == 0)
+            indexes.push_back(make_pair(string(idx.idxName), string(idx.attrName)));
+
+    // 删除表再加入表
+    dropTable(relName.c_str(), false);
+    AttrInfo *attrInfo = new AttrInfo[attrCount];
+    int delIndex = -1;
+    for (int i = 0; i < attrCount; ++i){
+        strcpy(attrInfo[i].attrName, dataAttrInfo[i].attrName);
+        attrInfo[i].attrLength = dataAttrInfo[i].attrLength;
+        attrInfo[i].attrType = dataAttrInfo[i].attrType;
+        attrInfo[i].isPrimaryKey = dataAttrInfo[i].isPrimaryKey;
+        attrInfo[i].notNull = dataAttrInfo[i].notNull;
+        attrInfo[i].isDefault = dataAttrInfo[i].isDefault;
+        if (attrInfo[i].isDefault){
+            if (attrInfo[i].defaultVal.isNull)
+                *((unsigned int*)dataAttrInfo[i].defaultVal) = NULL_MAGIC_NUMBER;  // 默认值为NULL，则用magicnumber来记载
+            else
+                switch (attrInfo[i].attrType){
+                    case T_INT:
+                        memcpy((void*)dataAttrInfo[i].defaultVal, (void*)&attrInfo[i].defaultVal.i, sizeof (int));
+                        break;
+                    case T_FLOAT:
+                        memcpy((void*)dataAttrInfo[i].defaultVal, (void*)&attrInfo[i].defaultVal.f, sizeof (float));
+                        break;
+                    case T_STRING:
+                        strcpy(dataAttrInfo[i].defaultVal, attrInfo[i].defaultVal.s.c_str());
+                        break;
+                    case T_DATE:
+                        strcpy(dataAttrInfo[i].defaultVal, attrInfo[i].defaultVal.s.c_str());
+                        break;
+                }
+        }
+        if (strcmp(attrInfo[i].attrName, attrName.c_str()) == 0)
+            delIndex = i;
+    }
+    if (delIndex == -1){
+        cerr << "[ERROR] Inner error in DelAttr()." << endl;
+        return RETVAL_ERR;
+    }
+    for (int i = delIndex + 1; i < attrCount; ++i)  // 把多的一列挤掉了
+        attrInfo[i-1] = attrInfo[i];
+    createTable(relName.c_str(), attrCount - 1, attrInfo);
+
+    for (const auto &idxp: indexes)
+        if (idxp.second != attrName)
+            createIndex(relName, (SystemManager::Attribute){relName, idxp.second}, idxp.first);
+
+    for (auto record: records){
+        record.second.attrVals.erase(record.second.attrVals.begin() + delIndex);
+        Insert(relName, NULL, record.second.attrVals, false);
+    }
+    delete[] attrInfo;
+    return RETVAL_OK;
 }
 
 RETVAL SystemManager::ModifyAttr(std::string relName, std::string attrName, AttrInfo attr){
-
+    RETURNIF(DelAttr(relName, attrName));
+    RETURNIF(AddAttr(relName, attr));
 }
 
 RETVAL SystemManager::RenameTable(std::string a, std::string b){
@@ -2193,5 +2353,17 @@ RETVAL SystemManager::RenameTable(std::string a, std::string b){
     }
 
     dbHandle.refreshHandle();
+    return RETVAL_OK;
+}
+
+RETVAL SystemManager::ShowDatabase(){
+    dirent *dirp;
+    DIR* dir = opendir("./");
+    while ((dirp = readdir(dir)) != nullptr)
+        if (dirp->d_type == DT_DIR)
+            if (strcmp(dirp->d_name, "CMakeFiles") != 0 &&
+                strcmp(dirp->d_name, ".") != 0 &&
+                strcmp(dirp->d_name, "..") != 0)
+                cout << "[Database]\t" << dirp->d_name << endl;
     return RETVAL_OK;
 }

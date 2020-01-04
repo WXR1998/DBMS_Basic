@@ -577,14 +577,14 @@ static const yytype_uint8 yytranslate[] =
 static const yytype_uint16 yyrline[] =
 {
        0,    94,    94,    96,   101,   103,   105,   107,   109,   111,
-     116,   124,   131,   138,   145,   154,   161,   168,   175,   182,
-     189,   196,   204,   210,   219,   227,   235,   243,   254,   260,
-     266,   271,   279,   286,   293,   300,   307,   314,   324,   329,
-     336,   342,   348,   354,   360,   365,   372,   376,   380,   384,
-     388,   395,   399,   406,   411,   422,   426,   431,   435,   440,
-     448,   452,   456,   460,   468,   473,   479,   484,   491,   497,
-     505,   509,   513,   517,   521,   525,   532,   537,   544,   549,
-     556,   562,   574,   579,   586,   591,   596,   601,   606,   611
+     116,   125,   132,   139,   146,   155,   162,   169,   176,   183,
+     190,   197,   205,   211,   220,   228,   236,   244,   255,   262,
+     270,   278,   286,   293,   300,   307,   314,   321,   331,   336,
+     343,   349,   355,   361,   367,   372,   379,   383,   387,   391,
+     395,   402,   406,   413,   418,   429,   433,   438,   442,   447,
+     455,   459,   463,   467,   475,   480,   486,   491,   498,   504,
+     512,   516,   520,   524,   528,   532,   539,   544,   551,   556,
+     563,   569,   581,   586,   593,   598,   603,   608,   613,   618
 };
 #endif
 
@@ -1543,123 +1543,124 @@ yyreduce:
   case 10:
 #line 117 "parser.y" /* yacc.c:1646  */
     {
-            // TODO
-            printf("TODO\n");
+            (yyval.tree) = new ShowDatabaseTree();
+            Tree::setInstance((yyval.tree));
+            Tree::run();
         }
-#line 1550 "y.tab.cpp" /* yacc.c:1646  */
+#line 1551 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 125 "parser.y" /* yacc.c:1646  */
+#line 126 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new CreateDatabaseTree((yyvsp[0].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1561 "y.tab.cpp" /* yacc.c:1646  */
+#line 1562 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 132 "parser.y" /* yacc.c:1646  */
+#line 133 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropDatabaseTree((yyvsp[0].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1572 "y.tab.cpp" /* yacc.c:1646  */
+#line 1573 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 139 "parser.y" /* yacc.c:1646  */
+#line 140 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new UseDatabaseTree((yyvsp[0].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1583 "y.tab.cpp" /* yacc.c:1646  */
+#line 1584 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 146 "parser.y" /* yacc.c:1646  */
+#line 147 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DescTableTree("");
             Tree::setInstance((yyval.tree));
             Tree::run();
         }
-#line 1593 "y.tab.cpp" /* yacc.c:1646  */
+#line 1594 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 155 "parser.y" /* yacc.c:1646  */
+#line 156 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new CreateTableTree((yyvsp[-3].string), (yyvsp[-1].columnsTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-3].string);
             Tree::run();
         }
-#line 1604 "y.tab.cpp" /* yacc.c:1646  */
+#line 1605 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 162 "parser.y" /* yacc.c:1646  */
+#line 163 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropTableTree((yyvsp[0].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1615 "y.tab.cpp" /* yacc.c:1646  */
+#line 1616 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 169 "parser.y" /* yacc.c:1646  */
+#line 170 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DescTableTree((yyvsp[0].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1626 "y.tab.cpp" /* yacc.c:1646  */
+#line 1627 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 176 "parser.y" /* yacc.c:1646  */
+#line 177 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new InsertTree((yyvsp[-2].string), (yyvsp[0].insertValueTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-2].string);
             Tree::run();
         }
-#line 1637 "y.tab.cpp" /* yacc.c:1646  */
+#line 1638 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 183 "parser.y" /* yacc.c:1646  */
+#line 184 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new InsertTree((yyvsp[-5].string), (yyvsp[-3].attributesTree), (yyvsp[0].insertValueTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-5].string);
             Tree::run();
         }
-#line 1648 "y.tab.cpp" /* yacc.c:1646  */
+#line 1649 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 190 "parser.y" /* yacc.c:1646  */
+#line 191 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DeleteTree((yyvsp[-1].string), (yyvsp[0].whereClauseTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-1].string);
             Tree::run();
         }
-#line 1659 "y.tab.cpp" /* yacc.c:1646  */
+#line 1660 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 197 "parser.y" /* yacc.c:1646  */
+#line 198 "parser.y" /* yacc.c:1646  */
     {
             // 这里不考虑WhereClause，因为update加上whereclause后就不能逐列修改了
             (yyval.tree) = new UpdateTree(std::string((yyvsp[-3].string)), (yyvsp[-1].setClauseTree), (yyvsp[0].whereClauseTree)); 
@@ -1667,31 +1668,31 @@ yyreduce:
             delete (yyvsp[-3].string);
             Tree::run();
         }
-#line 1671 "y.tab.cpp" /* yacc.c:1646  */
+#line 1672 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 205 "parser.y" /* yacc.c:1646  */
+#line 206 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new SelectTree((yyvsp[-1].relationsTree), (yyvsp[0].whereClauseTree));
             Tree::setInstance((yyval.tree));
             Tree::run();
         }
-#line 1681 "y.tab.cpp" /* yacc.c:1646  */
+#line 1682 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 211 "parser.y" /* yacc.c:1646  */
+#line 212 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new SelectTree((yyvsp[-3].attributesTree), (yyvsp[-1].relationsTree), (yyvsp[0].whereClauseTree));
             Tree::setInstance((yyval.tree));
             Tree::run();
         }
-#line 1691 "y.tab.cpp" /* yacc.c:1646  */
+#line 1692 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 220 "parser.y" /* yacc.c:1646  */
+#line 221 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new CreateIndexTree((yyvsp[-5].string), (yyvsp[-3].string), (yyvsp[-1].attributesTree));
             Tree::setInstance((yyval.tree));
@@ -1699,11 +1700,11 @@ yyreduce:
             delete (yyvsp[-3].string);
             Tree::run();
         }
-#line 1703 "y.tab.cpp" /* yacc.c:1646  */
+#line 1704 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 228 "parser.y" /* yacc.c:1646  */
+#line 229 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropIndexTree((yyvsp[-2].string), (yyvsp[0].string));
             Tree::setInstance((yyval.tree));
@@ -1711,11 +1712,11 @@ yyreduce:
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1715 "y.tab.cpp" /* yacc.c:1646  */
+#line 1716 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 236 "parser.y" /* yacc.c:1646  */
+#line 237 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new CreateIndexTree((yyvsp[-3].string), (yyvsp[-6].string), (yyvsp[-1].attributesTree));
             Tree::setInstance((yyval.tree));
@@ -1723,11 +1724,11 @@ yyreduce:
             delete (yyvsp[-3].string);
             Tree::run();
         }
-#line 1727 "y.tab.cpp" /* yacc.c:1646  */
+#line 1728 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 244 "parser.y" /* yacc.c:1646  */
+#line 245 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropIndexTree((yyvsp[0].string), (yyvsp[-3].string));
             Tree::setInstance((yyval.tree));
@@ -1735,40 +1736,46 @@ yyreduce:
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1739 "y.tab.cpp" /* yacc.c:1646  */
+#line 1740 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 255 "parser.y" /* yacc.c:1646  */
+#line 256 "parser.y" /* yacc.c:1646  */
     {
-            // TODO
-            printf("TODO\n");
-
+            (yyval.tree) = new AddAttrTree((yyvsp[-2].string), (yyvsp[0].columnTree));
+            Tree::setInstance((yyval.tree));
+            delete (yyvsp[-2].string);
+            Tree::run();
         }
-#line 1749 "y.tab.cpp" /* yacc.c:1646  */
+#line 1751 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 261 "parser.y" /* yacc.c:1646  */
+#line 263 "parser.y" /* yacc.c:1646  */
     {
-            // TODO
-            printf("TODO\n");
-
+            (yyval.tree) = new DropAttrTree((yyvsp[-2].string), (yyvsp[0].string));
+            Tree::setInstance((yyval.tree));
+            delete (yyvsp[-2].string);
+            delete (yyvsp[0].string);
+            Tree::run();
         }
-#line 1759 "y.tab.cpp" /* yacc.c:1646  */
+#line 1763 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 267 "parser.y" /* yacc.c:1646  */
+#line 271 "parser.y" /* yacc.c:1646  */
     {
-            // TODO
-            printf("TODO\n");
+            (yyval.tree) = new AlterAttrTree((yyvsp[-3].string), (yyvsp[-1].string), (yyvsp[0].columnTree));
+            Tree::setInstance((yyval.tree));
+            delete (yyvsp[-3].string);
+            delete (yyvsp[-1].string);
+            Tree::run();
         }
-#line 1768 "y.tab.cpp" /* yacc.c:1646  */
+#line 1775 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 272 "parser.y" /* yacc.c:1646  */
+#line 279 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new RenameTree((yyvsp[-3].string), (yyvsp[0].string));
             Tree::setInstance((yyval.tree));
@@ -1776,505 +1783,505 @@ yyreduce:
             delete (yyvsp[0].string);
             Tree::run();
         }
-#line 1780 "y.tab.cpp" /* yacc.c:1646  */
+#line 1787 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 32:
-#line 280 "parser.y" /* yacc.c:1646  */
+#line 287 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new AddPrimaryTree((yyvsp[-5].string), (yyvsp[-1].attributesTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-5].string);
             Tree::run();
         }
-#line 1791 "y.tab.cpp" /* yacc.c:1646  */
+#line 1798 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 33:
-#line 287 "parser.y" /* yacc.c:1646  */
+#line 294 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropPrimaryTree((yyvsp[-2].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-2].string);
             Tree::run();
         }
-#line 1802 "y.tab.cpp" /* yacc.c:1646  */
+#line 1809 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 34:
-#line 294 "parser.y" /* yacc.c:1646  */
+#line 301 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new AddPrimaryTree((yyvsp[-7].string), (yyvsp[-1].attributesTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-7].string);
             Tree::run();
         }
-#line 1813 "y.tab.cpp" /* yacc.c:1646  */
+#line 1820 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 35:
-#line 301 "parser.y" /* yacc.c:1646  */
+#line 308 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropPrimaryTree((yyvsp[-3].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-3].string);
             Tree::run();
         }
-#line 1824 "y.tab.cpp" /* yacc.c:1646  */
+#line 1831 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 308 "parser.y" /* yacc.c:1646  */
+#line 315 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new AddForeignTree((yyvsp[-9].string), (yyvsp[-12].string), (yyvsp[-3].string), (yyvsp[-6].attributesTree), (yyvsp[-1].attributesTree));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-12].string);
             Tree::run();
         }
-#line 1835 "y.tab.cpp" /* yacc.c:1646  */
+#line 1842 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 315 "parser.y" /* yacc.c:1646  */
+#line 322 "parser.y" /* yacc.c:1646  */
     {
             (yyval.tree) = new DropForeignTree((yyvsp[-3].string), (yyvsp[0].string));
             Tree::setInstance((yyval.tree));
             delete (yyvsp[-3].string);
             Tree::run();
         }
-#line 1846 "y.tab.cpp" /* yacc.c:1646  */
+#line 1853 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 325 "parser.y" /* yacc.c:1646  */
+#line 332 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnsTree) = new ColumnsTree();
             (yyval.columnsTree)->addColumn((yyvsp[0].columnTree));
         }
-#line 1855 "y.tab.cpp" /* yacc.c:1646  */
+#line 1862 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 330 "parser.y" /* yacc.c:1646  */
+#line 337 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnsTree)->addColumn((yyvsp[0].columnTree));
         }
-#line 1863 "y.tab.cpp" /* yacc.c:1646  */
+#line 1870 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 337 "parser.y" /* yacc.c:1646  */
+#line 344 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnTree) = new ColumnTree((yyvsp[-1].string), (yyvsp[0].typeTree)->getType(), (yyvsp[0].typeTree)->getLen());
             delete (yyvsp[-1].string);
             delete (yyvsp[0].typeTree);
         }
-#line 1873 "y.tab.cpp" /* yacc.c:1646  */
+#line 1880 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 343 "parser.y" /* yacc.c:1646  */
+#line 350 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnTree) = new ColumnTree((yyvsp[-2].string), (yyvsp[-1].typeTree)->getType(), (yyvsp[-1].typeTree)->getLen(), 1);
             delete (yyvsp[-2].string);
             delete (yyvsp[-1].typeTree);
         }
-#line 1883 "y.tab.cpp" /* yacc.c:1646  */
+#line 1890 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 349 "parser.y" /* yacc.c:1646  */
+#line 356 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnTree) = new ColumnTree((yyvsp[-3].string), (yyvsp[-2].typeTree)->getType(), (yyvsp[-2].typeTree)->getLen(), 0, (yyvsp[0].constValueTree));
             delete (yyvsp[-3].string);
             delete (yyvsp[-2].typeTree);
         }
-#line 1893 "y.tab.cpp" /* yacc.c:1646  */
+#line 1900 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 355 "parser.y" /* yacc.c:1646  */
+#line 362 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnTree) = new ColumnTree((yyvsp[-4].string), (yyvsp[-3].typeTree)->getType(), (yyvsp[-3].typeTree)->getLen(), 1, (yyvsp[0].constValueTree));
             delete (yyvsp[-4].string);
             delete (yyvsp[-3].typeTree);
         }
-#line 1903 "y.tab.cpp" /* yacc.c:1646  */
+#line 1910 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 361 "parser.y" /* yacc.c:1646  */
+#line 368 "parser.y" /* yacc.c:1646  */
     {
             // 这里检查columnList里出现的所有名称是否在fieldList里出现过
             (yyval.columnTree) = new PrimarySetTree((yyvsp[-1].attributesTree));
         }
-#line 1912 "y.tab.cpp" /* yacc.c:1646  */
+#line 1919 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 366 "parser.y" /* yacc.c:1646  */
+#line 373 "parser.y" /* yacc.c:1646  */
     {
             (yyval.columnTree) = new ForeignSetTree((yyvsp[-8].string), (yyvsp[-3].string), (yyvsp[-6].attributesTree), (yyvsp[-1].attributesTree));
         }
-#line 1920 "y.tab.cpp" /* yacc.c:1646  */
+#line 1927 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 373 "parser.y" /* yacc.c:1646  */
+#line 380 "parser.y" /* yacc.c:1646  */
     {
             (yyval.typeTree) = new TypeTree(AttrType::T_INT);
         }
-#line 1928 "y.tab.cpp" /* yacc.c:1646  */
+#line 1935 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 377 "parser.y" /* yacc.c:1646  */
+#line 384 "parser.y" /* yacc.c:1646  */
     {
             (yyval.typeTree) = new TypeTree(AttrType::T_INT, (yyvsp[-1].ivalue));
         }
-#line 1936 "y.tab.cpp" /* yacc.c:1646  */
+#line 1943 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 381 "parser.y" /* yacc.c:1646  */
+#line 388 "parser.y" /* yacc.c:1646  */
     {
             (yyval.typeTree) = new TypeTree(AttrType::T_STRING, (yyvsp[-1].ivalue));
         }
-#line 1944 "y.tab.cpp" /* yacc.c:1646  */
+#line 1951 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 385 "parser.y" /* yacc.c:1646  */
+#line 392 "parser.y" /* yacc.c:1646  */
     {
             (yyval.typeTree) = new TypeTree(AttrType::T_DATE, 15);
         }
-#line 1952 "y.tab.cpp" /* yacc.c:1646  */
+#line 1959 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 389 "parser.y" /* yacc.c:1646  */
+#line 396 "parser.y" /* yacc.c:1646  */
     {
             (yyval.typeTree) = new TypeTree(AttrType::T_FLOAT);
         }
-#line 1960 "y.tab.cpp" /* yacc.c:1646  */
+#line 1967 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 396 "parser.y" /* yacc.c:1646  */
+#line 403 "parser.y" /* yacc.c:1646  */
     {
             (yyval.insertValueTree) = new InsertValueTree((yyvsp[-1].constValuesTree));
         }
-#line 1968 "y.tab.cpp" /* yacc.c:1646  */
+#line 1975 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 400 "parser.y" /* yacc.c:1646  */
+#line 407 "parser.y" /* yacc.c:1646  */
     {
             (yyval.insertValueTree)->addConstValues((yyvsp[-1].constValuesTree));
         }
-#line 1976 "y.tab.cpp" /* yacc.c:1646  */
+#line 1983 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 407 "parser.y" /* yacc.c:1646  */
+#line 414 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValuesTree) = new ConstValuesTree();
             (yyval.constValuesTree)->addConstValue((yyvsp[0].constValueTree));
         }
-#line 1985 "y.tab.cpp" /* yacc.c:1646  */
+#line 1992 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 412 "parser.y" /* yacc.c:1646  */
+#line 419 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValuesTree)->addConstValue((yyvsp[0].constValueTree));
         }
-#line 1993 "y.tab.cpp" /* yacc.c:1646  */
+#line 2000 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 423 "parser.y" /* yacc.c:1646  */
+#line 430 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValueTree) = new ConstValueTree((yyvsp[0].ivalue));
         }
-#line 2001 "y.tab.cpp" /* yacc.c:1646  */
+#line 2008 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 427 "parser.y" /* yacc.c:1646  */
+#line 434 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValueTree) = new ConstValueTree((yyvsp[0].string));
             delete (yyvsp[0].string);
         }
-#line 2010 "y.tab.cpp" /* yacc.c:1646  */
+#line 2017 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 432 "parser.y" /* yacc.c:1646  */
+#line 439 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValueTree) = new ConstValueTree((yyvsp[0].fvalue));
         }
-#line 2018 "y.tab.cpp" /* yacc.c:1646  */
+#line 2025 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 436 "parser.y" /* yacc.c:1646  */
+#line 443 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValueTree) = new ConstValueTree((yyvsp[0].string), true);
             delete (yyvsp[0].string);
         }
-#line 2027 "y.tab.cpp" /* yacc.c:1646  */
+#line 2034 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 441 "parser.y" /* yacc.c:1646  */
+#line 448 "parser.y" /* yacc.c:1646  */
     {
             (yyval.constValueTree) = new ConstValueTree(0);
             (yyval.constValueTree)->setNull();
         }
-#line 2036 "y.tab.cpp" /* yacc.c:1646  */
+#line 2043 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 449 "parser.y" /* yacc.c:1646  */
+#line 456 "parser.y" /* yacc.c:1646  */
     {
             (yyval.comparisonTree) = new ComparisonTree((yyvsp[-2].attributeTree), (yyvsp[-1].operatorTree)->op, (yyvsp[0].attributeTree));
         }
-#line 2044 "y.tab.cpp" /* yacc.c:1646  */
+#line 2051 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 453 "parser.y" /* yacc.c:1646  */
+#line 460 "parser.y" /* yacc.c:1646  */
     {
             (yyval.comparisonTree) = new ComparisonTree((yyvsp[-2].attributeTree), (yyvsp[-1].operatorTree)->op, (yyvsp[0].constValueTree));
         }
-#line 2052 "y.tab.cpp" /* yacc.c:1646  */
+#line 2059 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 457 "parser.y" /* yacc.c:1646  */
+#line 464 "parser.y" /* yacc.c:1646  */
     {
             (yyval.comparisonTree) = new ComparisonTree((yyvsp[-2].attributeTree), CmpOP::T_ISNULL);
         }
-#line 2060 "y.tab.cpp" /* yacc.c:1646  */
+#line 2067 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 461 "parser.y" /* yacc.c:1646  */
+#line 468 "parser.y" /* yacc.c:1646  */
     {
             (yyval.comparisonTree) = new ComparisonTree((yyvsp[-2].attributeTree), CmpOP::T_ISNOTNULL);
         }
-#line 2068 "y.tab.cpp" /* yacc.c:1646  */
+#line 2075 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 469 "parser.y" /* yacc.c:1646  */
+#line 476 "parser.y" /* yacc.c:1646  */
     {
             (yyval.whereClauseTree) = new WhereClauseTree((yyvsp[0].conditionsTree));
         }
-#line 2076 "y.tab.cpp" /* yacc.c:1646  */
+#line 2083 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 473 "parser.y" /* yacc.c:1646  */
+#line 480 "parser.y" /* yacc.c:1646  */
     {
             (yyval.whereClauseTree) = nullptr;
         }
-#line 2084 "y.tab.cpp" /* yacc.c:1646  */
+#line 2091 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 480 "parser.y" /* yacc.c:1646  */
+#line 487 "parser.y" /* yacc.c:1646  */
     {
             (yyval.conditionsTree) = new ConditionsTree();
             (yyval.conditionsTree)->addComparison((yyvsp[0].comparisonTree));
         }
-#line 2093 "y.tab.cpp" /* yacc.c:1646  */
+#line 2100 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 485 "parser.y" /* yacc.c:1646  */
+#line 492 "parser.y" /* yacc.c:1646  */
     {
             (yyval.conditionsTree)->addComparison((yyvsp[0].comparisonTree));
         }
-#line 2101 "y.tab.cpp" /* yacc.c:1646  */
+#line 2108 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 492 "parser.y" /* yacc.c:1646  */
+#line 499 "parser.y" /* yacc.c:1646  */
     {
             (yyval.attributeTree) = new AttributeTree((yyvsp[-2].string), (yyvsp[0].string));
             delete (yyvsp[-2].string);
             delete (yyvsp[0].string);
         }
-#line 2111 "y.tab.cpp" /* yacc.c:1646  */
+#line 2118 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 498 "parser.y" /* yacc.c:1646  */
+#line 505 "parser.y" /* yacc.c:1646  */
     {
             (yyval.attributeTree) = new AttributeTree((yyvsp[0].string));
             delete (yyvsp[0].string);
         }
-#line 2120 "y.tab.cpp" /* yacc.c:1646  */
+#line 2127 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 70:
-#line 506 "parser.y" /* yacc.c:1646  */
+#line 513 "parser.y" /* yacc.c:1646  */
     {
             (yyval.operatorTree) = new OperatorTree(CmpOP::T_EQ);
         }
-#line 2128 "y.tab.cpp" /* yacc.c:1646  */
+#line 2135 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 510 "parser.y" /* yacc.c:1646  */
+#line 517 "parser.y" /* yacc.c:1646  */
     {
             (yyval.operatorTree) = new OperatorTree(CmpOP::T_NE);
         }
-#line 2136 "y.tab.cpp" /* yacc.c:1646  */
+#line 2143 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 514 "parser.y" /* yacc.c:1646  */
+#line 521 "parser.y" /* yacc.c:1646  */
     {
             (yyval.operatorTree) = new OperatorTree(CmpOP::T_GT);
         }
-#line 2144 "y.tab.cpp" /* yacc.c:1646  */
+#line 2151 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 73:
-#line 518 "parser.y" /* yacc.c:1646  */
+#line 525 "parser.y" /* yacc.c:1646  */
     {
             (yyval.operatorTree) = new OperatorTree(CmpOP::T_LT);
         }
-#line 2152 "y.tab.cpp" /* yacc.c:1646  */
+#line 2159 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 74:
-#line 522 "parser.y" /* yacc.c:1646  */
+#line 529 "parser.y" /* yacc.c:1646  */
     {
             (yyval.operatorTree) = new OperatorTree(CmpOP::T_GE);
         }
-#line 2160 "y.tab.cpp" /* yacc.c:1646  */
+#line 2167 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 75:
-#line 526 "parser.y" /* yacc.c:1646  */
+#line 533 "parser.y" /* yacc.c:1646  */
     {
             (yyval.operatorTree) = new OperatorTree(CmpOP::T_LE);
         }
-#line 2168 "y.tab.cpp" /* yacc.c:1646  */
+#line 2175 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 76:
-#line 533 "parser.y" /* yacc.c:1646  */
+#line 540 "parser.y" /* yacc.c:1646  */
     {
             (yyval.setClauseTree) = new SetClauseTree();
             (yyval.setClauseTree)->addClause((yyvsp[-2].string), (yyvsp[0].constValueTree));
         }
-#line 2177 "y.tab.cpp" /* yacc.c:1646  */
+#line 2184 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 77:
-#line 538 "parser.y" /* yacc.c:1646  */
+#line 545 "parser.y" /* yacc.c:1646  */
     {
             (yyval.setClauseTree)->addClause((yyvsp[-2].string), (yyvsp[0].constValueTree));
         }
-#line 2185 "y.tab.cpp" /* yacc.c:1646  */
+#line 2192 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 545 "parser.y" /* yacc.c:1646  */
+#line 552 "parser.y" /* yacc.c:1646  */
     {
             (yyval.attributesTree) = new AttributesTree();
             (yyval.attributesTree)->addAttribute((yyvsp[0].attributeTree));
         }
-#line 2194 "y.tab.cpp" /* yacc.c:1646  */
+#line 2201 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 550 "parser.y" /* yacc.c:1646  */
+#line 557 "parser.y" /* yacc.c:1646  */
     {
             (yyval.attributesTree)->addAttribute((yyvsp[0].attributeTree));
         }
-#line 2202 "y.tab.cpp" /* yacc.c:1646  */
+#line 2209 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 557 "parser.y" /* yacc.c:1646  */
+#line 564 "parser.y" /* yacc.c:1646  */
     {
             (yyval.relationsTree) = new RelationsTree();
             (yyval.relationsTree)->addRelation((yyvsp[0].string));
             delete (yyvsp[0].string);
         }
-#line 2212 "y.tab.cpp" /* yacc.c:1646  */
+#line 2219 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 563 "parser.y" /* yacc.c:1646  */
+#line 570 "parser.y" /* yacc.c:1646  */
     {
             (yyval.relationsTree)->addRelation((yyvsp[0].string));
             delete (yyvsp[0].string);
         }
-#line 2221 "y.tab.cpp" /* yacc.c:1646  */
+#line 2228 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 82:
-#line 575 "parser.y" /* yacc.c:1646  */
+#line 582 "parser.y" /* yacc.c:1646  */
     {
             (yyval.attributesTree) = new AttributesTree();
             (yyval.attributesTree)->addAttribute(new AttributeTree((yyvsp[0].string)));
         }
-#line 2230 "y.tab.cpp" /* yacc.c:1646  */
+#line 2237 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 580 "parser.y" /* yacc.c:1646  */
+#line 587 "parser.y" /* yacc.c:1646  */
     {
             (yyval.attributesTree)->addAttribute(new AttributeTree((yyvsp[0].string)));
         }
-#line 2238 "y.tab.cpp" /* yacc.c:1646  */
+#line 2245 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 587 "parser.y" /* yacc.c:1646  */
+#line 594 "parser.y" /* yacc.c:1646  */
     { }
-#line 2244 "y.tab.cpp" /* yacc.c:1646  */
+#line 2251 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 592 "parser.y" /* yacc.c:1646  */
+#line 599 "parser.y" /* yacc.c:1646  */
     { }
-#line 2250 "y.tab.cpp" /* yacc.c:1646  */
+#line 2257 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 597 "parser.y" /* yacc.c:1646  */
+#line 604 "parser.y" /* yacc.c:1646  */
     { }
-#line 2256 "y.tab.cpp" /* yacc.c:1646  */
+#line 2263 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 87:
-#line 602 "parser.y" /* yacc.c:1646  */
+#line 609 "parser.y" /* yacc.c:1646  */
     { }
-#line 2262 "y.tab.cpp" /* yacc.c:1646  */
+#line 2269 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 88:
-#line 607 "parser.y" /* yacc.c:1646  */
+#line 614 "parser.y" /* yacc.c:1646  */
     { }
-#line 2268 "y.tab.cpp" /* yacc.c:1646  */
+#line 2275 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 89:
-#line 612 "parser.y" /* yacc.c:1646  */
+#line 619 "parser.y" /* yacc.c:1646  */
     { }
-#line 2274 "y.tab.cpp" /* yacc.c:1646  */
+#line 2281 "y.tab.cpp" /* yacc.c:1646  */
     break;
 
 
-#line 2278 "y.tab.cpp" /* yacc.c:1646  */
+#line 2285 "y.tab.cpp" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2502,7 +2509,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 615 "parser.y" /* yacc.c:1906  */
+#line 622 "parser.y" /* yacc.c:1906  */
 
 
 void yyerror(const char *msg) {

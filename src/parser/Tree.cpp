@@ -890,3 +890,46 @@ RenameTree::~RenameTree(){}
 void RenameTree::visit(){
     SystemManager::instance()->RenameTable(a, b);
 }
+
+AddAttrTree::AddAttrTree(const char *relName, ColumnTree *attr){
+    this->relName = string(relName);
+    this->attr = attr;
+}
+AddAttrTree::~AddAttrTree(){}
+void AddAttrTree::visit(){
+    if (attr->isForeignSetTree || attr->isPrimarySetTree){
+        cerr << "[ERROR] Invalid input." << endl;
+        return;
+    }
+    SystemManager::instance()->AddAttr(relName, attr->getAttrInfo());
+}
+
+
+DropAttrTree::DropAttrTree(const char *relName, const char *attrName){
+    this->relName = string(relName);
+    this->attrName = string(attrName);
+}
+DropAttrTree::~DropAttrTree(){}
+void DropAttrTree::visit(){
+    SystemManager::instance()->DelAttr(relName, attrName);
+}
+
+AlterAttrTree::AlterAttrTree(const char *relName, const char *attrName, ColumnTree *attr){
+    this->relName = string(relName);
+    this->attrName = string(attrName);
+    this->attr = attr;
+}
+AlterAttrTree::~AlterAttrTree(){}
+void AlterAttrTree::visit(){
+    if (attr->isForeignSetTree || attr->isPrimarySetTree){
+        cerr << "[ERROR] Invalid input." << endl;
+        return;
+    }
+    SystemManager::instance()->ModifyAttr(relName, attrName, attr->getAttrInfo());
+}
+
+ShowDatabaseTree::ShowDatabaseTree(){}
+ShowDatabaseTree::~ShowDatabaseTree(){}
+void ShowDatabaseTree::visit(){
+    SystemManager::instance()->ShowDatabase();
+}

@@ -24,7 +24,8 @@ public:
 
     // Relation Operations
     RETVAL createTable(const char *relName, int attrCount, AttrInfo *attributes);
-    RETVAL dropTable(const char *relName);
+    // 如果check为false，则不检查数据完整性
+    RETVAL dropTable(const char *relName, bool check = true);
     RETVAL createIndex(std::string relName, AttributeTree::AttributeDescriptor attr, std::string idxName);
     RETVAL dropIndex(std::string relName, std::string idxName);
 
@@ -59,8 +60,9 @@ public:
             std::vector<std::string> rels,
             std::vector<ComparisonTree::ComparisonDescriptor> coms);
 
+    // 如果check为false，则不检查数据完整性
     RETVAL Insert(std::string relName, std::vector<std::string>* attrs,
-            std::vector<AttrValue> vals);
+            std::vector<AttrValue> vals, bool check = true);
 
     // 使得表relName中满足coms约束条件的attr列变为val
     RETVAL Update(std::string relName,
@@ -86,6 +88,8 @@ public:
     RETVAL DelAttr(std::string relName, std::string attrName);
     RETVAL ModifyAttr(std::string relName, std::string attrName, AttrInfo attr);
     RETVAL RenameTable(std::string a, std::string b);
+
+    RETVAL ShowDatabase();
 
     ~SystemManager();
 private:

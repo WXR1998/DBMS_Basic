@@ -35,6 +35,10 @@ class PrimarySetTree;
 class AddPrimaryTree;
 class ForeignSetTree;
 class RenameTree;
+class AddAttrTree;
+class DropAttrTree;
+class AlterAttrTree;
+class ShowDatabaseTree;
 
 class Tree {
 public:
@@ -483,5 +487,40 @@ private:
     std::string a, b;
 };
 
+class AddAttrTree : public Tree {
+public:
+    AddAttrTree(const char *relName, ColumnTree *attr);
+    virtual ~AddAttrTree();
+    void visit();
+private:
+    std::string relName;
+    ColumnTree *attr;
+};
+
+class DropAttrTree : public Tree {
+public:
+    DropAttrTree(const char *relName, const char *attrName);
+    virtual ~DropAttrTree();
+    void visit();
+private:
+    std::string relName, attrName;
+};
+
+class AlterAttrTree : public Tree {
+public:
+    AlterAttrTree(const char *relName, const char *attrName, ColumnTree *attr);
+    virtual ~AlterAttrTree();
+    void visit();
+private:
+    std::string relName, attrName;
+    ColumnTree *attr;
+};
+
+class ShowDatabaseTree : public Tree {
+public:
+    ShowDatabaseTree();
+    virtual ~ShowDatabaseTree();
+    void visit();
+};
 
 #endif //DATABASE_TREE_H
