@@ -1,10 +1,3 @@
-/*
- * parser.h
- *
- *  Created on: 2014年12月7日
- *      Author: lql
- */
-
 #ifndef PARSER_H_
 #define PARSER_H_
 

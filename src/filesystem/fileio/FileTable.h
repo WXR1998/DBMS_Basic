@@ -8,6 +8,7 @@
 #include <set>
 #include <fstream>
 using namespace std;
+
 class FileTable {
 private:
 	multiset<string> isExist;

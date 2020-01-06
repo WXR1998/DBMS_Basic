@@ -2,9 +2,7 @@
 #define MY_HASH_MAP
 #include "pagedef.h"
 #include "MyLinkList.h"
-/*
- * hash表的键
- */
+
 struct DataNode {
 	/*
 	 * 第一个键

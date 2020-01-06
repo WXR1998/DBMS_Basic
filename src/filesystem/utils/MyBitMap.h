@@ -1,34 +1,20 @@
 #ifndef MY_BIT_MAP
 #define MY_BIT_MAP
 typedef unsigned int uint;
-/*
-#define LEAF_BIT 32
-#define MAX_LEVEL 5
-#define MAX_INNER_NUM 67
-#define MOD 61
-#define BIAS 5*/
+
 #include <iostream>
 using namespace std;
 
 #define LEAF_BIT 32
 #define MAX_LEVEL 5
 #define MAX_INNER_NUM 67
-//#define MOD 61
 #define BIAS 5
-
-//
-// Created by MaYe on 2015/10/26.
-//
 
 #ifndef DATABASE_MYBITMAP1_H
 #define DATABASE_MYBITMAP1_H
 
 class MyBitMap {
 protected:
-//	static const int LEAF_BIT = 32;
-//	static const int MAX_LEVEL = 5;
-//	static const int MAX_INNER_NUM = 10;
-//	static const int MOD = 61;
     static unsigned char h[61];
     static unsigned int getMask(int k) {
         unsigned int s = 0;

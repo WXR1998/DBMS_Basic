@@ -1,7 +1,3 @@
-//
-// Created by LiuZhengning on 12/16/15.
-//
-
 #include "Error.h"
 
 #include <iostream>

@@ -12,8 +12,8 @@ tableAttrType = {
     'lineitem': [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 1, 1, 1]
 }
 
-initial = 'use evaldb;\n'
-ending = 'use evaldb;\n'
+initial = 'use checkdb;\n'
+ending = 'use checkdb;\n'
 
 for root, dirs, files in os.walk('.'):
     for f in files:

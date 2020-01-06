@@ -1,7 +1,3 @@
-//
-// Created by MaYe on 2015/10/23.
-//
-
 #ifndef DATABASE_GLOBAL_H
 #define DATABASE_GLOBAL_H
 #include <iostream>

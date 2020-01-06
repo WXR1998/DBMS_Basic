@@ -1,7 +1,3 @@
-//
-// Created by LiuZhengning on 12/16/15.
-//
-
 #ifndef DATABASE_ERROR_H
 #define DATABASE_ERROR_H
 
